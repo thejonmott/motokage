@@ -1,0 +1,7 @@
+{
+  "name": "Motokage Studio",
+  "description": "Jon Mott's Digital Twin",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
