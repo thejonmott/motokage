@@ -28,6 +28,7 @@ const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona, setPerso
   const [token, setToken] = useState(localStorage.getItem('motokage_token') || '');
   const [showHelp, setShowHelp] = useState(false);
   const [syncProgress, setSyncProgress] = useState(0);
+  const [currentFile, setCurrentFile] = useState('');
   const [status, setStatus] = useState<{ type: 'idle' | 'loading' | 'success' | 'error', msg?: string }>({ type: 'idle' });
 
   useEffect(() => {
@@ -35,14 +36,11 @@ const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona, setPerso
     localStorage.setItem('motokage_token', token);
   }, [repo, token]);
 
-  // The blueprint manifest defines what constitutes the system's "Body"
-  // Included package.json, vite.config.ts, and tsconfig.json for production builds
   const blueprintFiles = [
     'App.tsx', 'types.ts', 'index.tsx', 'metadata.json', 'index.html',
-    'components/NexusView.tsx', 'components/ShadowSyncConsole.tsx', 
-    'components/MemoryVault.tsx', 'components/ChatInterface.tsx', 
-    'components/ArchitectureView.tsx', 'components/PersonaForm.tsx',
-    'components/Header.tsx', 'components/StagingView.tsx', 
+    'components/Header.tsx', 'components/PersonaForm.tsx', 'components/ArchitectureView.tsx',
+    'components/MemoryVault.tsx', 'components/NexusView.tsx', 'components/ChatInterface.tsx',
+    'components/ComparisonView.tsx', 'components/ShadowSyncConsole.tsx', 'components/StagingView.tsx', 
     'Dockerfile', 'cloudbuild.yaml', 'package.json', 'vite.config.ts', 'tsconfig.json'
   ];
 
@@ -52,6 +50,7 @@ const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona, setPerso
       if (res.ok) return await res.text();
       return null;
     } catch (e) {
+      console.error(`Sync Error: Could not fetch local file ${path}`, e);
       return null;
     }
   };
@@ -62,7 +61,7 @@ const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona, setPerso
     try {
       const getRes = await fetch(url, { headers: { 'Authorization': `token ${cleanToken}`, 'Accept': 'application/vnd.github.v3+json' } });
       if (getRes.ok) { const data = await getRes.json(); sha = data.sha; }
-    } catch (e) { /* File might not exist yet */ }
+    } catch (e) { /* File might not exist */ }
 
     const encodedContent = toBase64(content);
     const putRes = await fetch(url, {
@@ -81,23 +80,39 @@ const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona, setPerso
     const cleanRepo = repo.trim().replace(/\/$/, "");
     const cleanToken = token.trim();
     if (!cleanRepo || !cleanToken) { setStatus({ type: 'error', msg: 'REPO & TOKEN REQUIRED' }); return; }
+    
     setStatus({ type: 'loading' });
     setSyncProgress(0);
     
     try {
+      let missingFiles = [];
       for (let i = 0; i < blueprintFiles.length; i++) {
         const path = blueprintFiles[i];
+        setCurrentFile(path);
         const content = await fetchFileContent(path);
+        
         if (content) {
-          await pushFileToGitHub(path, content, cleanRepo, cleanToken);
+          const success = await pushFileToGitHub(path, content, cleanRepo, cleanToken);
+          if (!success) throw new Error(`GitHub API Rejected: ${path}`);
+        } else {
+          missingFiles.push(path);
+          console.warn(`Sync Warning: Local file missing: ${path}`);
         }
         setSyncProgress(Math.round(((i + 1) / blueprintFiles.length) * 100));
       }
       
+      // Sync the persona DNA
       await pushFileToGitHub('shadow_config.json', JSON.stringify(persona, null, 2), cleanRepo, cleanToken);
-      setStatus({ type: 'success', msg: 'BLUEPRINT SYNCHRONIZED: CLOUD BUILD READY' });
-    } catch (e) { 
-      setStatus({ type: 'error', msg: 'BLUEPRINT_FAILURE: CHECK TOKEN PERMISSIONS' }); 
+      
+      if (missingFiles.includes('Dockerfile')) {
+        setStatus({ type: 'error', msg: 'SYNC INCOMPLETE: DOCKERFILE WAS NOT FOUND LOCALLY.' });
+      } else {
+        setStatus({ type: 'success', msg: 'BLUEPRINT SYNCHRONIZED: CLOUD BUILD READY' });
+      }
+    } catch (e: any) { 
+      setStatus({ type: 'error', msg: `BLUEPRINT_FAILURE: ${e.message}` }); 
+    } finally {
+      setCurrentFile('');
     }
   };
 
@@ -159,8 +174,8 @@ const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona, setPerso
             {showHelp && (
               <div className="p-6 bg-blue-500/5 border border-blue-500/10 rounded-2xl space-y-4">
                 <p className="text-[9px] text-slate-400 font-mono leading-relaxed uppercase">
-                  This will push your entire source code (Dockerfile, package.json, and Persona) to GitHub. 
-                  This triggers the Google Cloud build process automatically.
+                  This pushes your entire source code to GitHub, triggering a Cloud Build automatically.
+                  Ensure you have a <b>Dockerfile</b> and <b>cloudbuild.yaml</b> in the root of this project.
                 </p>
               </div>
             )}
@@ -179,7 +194,9 @@ const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona, setPerso
                   <div className="h-1 w-full bg-slate-950 rounded-full overflow-hidden">
                     <div className="h-full bg-indigo-500 transition-all duration-300" style={{ width: `${syncProgress}%` }}></div>
                   </div>
-                  <p className="text-[7px] text-slate-600 font-mono text-center uppercase tracking-widest">Uplinking to Source Hub: {syncProgress}%</p>
+                  <p className="text-[7px] text-slate-600 font-mono text-center uppercase tracking-widest">
+                    Uplinking {currentFile}: {syncProgress}%
+                  </p>
                 </div>
               )}
             </div>
@@ -198,7 +215,7 @@ const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona, setPerso
           <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${repo ? 'bg-blue-500' : 'bg-slate-700'}`}></span>
           NODE: {repo ? repo.toUpperCase() : 'STANDBY'}
         </span>
-        <span className="uppercase tracking-[0.4em]">Handshake Protocol: v5.0</span>
+        <span className="uppercase tracking-[0.4em]">Handshake Protocol: v5.2</span>
       </div>
     </div>
   );
