@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Persona, Message, AccessLevel, MemoryShard } from '../types';
 import { GoogleGenAI, LiveServerMessage, Modality } from '@google/genai';
@@ -97,9 +96,11 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
               setMessages(prev => {
                 const last = prev[prev.length - 1];
                 if (last && last.role === 'model' && last.timestamp.getTime() > Date.now() - 5000) {
-                  return [...prev.slice(0, -1), { ...last, text: last.text + text }];
+                  const updated: Message = { ...last, text: (last.text || '') + text };
+                  return [...prev.slice(0, -1), updated];
                 }
-                return [...prev, { role: 'model', text, timestamp: new Date() }];
+                const newMessage: Message = { role: 'model', text, timestamp: new Date() };
+                return [...prev, newMessage];
               });
             }
             const audioData = msg.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
@@ -116,7 +117,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
           onerror: cleanupAudio, onclose: cleanupAudio
         },
         config: { 
-          responseModalities: [Modality.AUDIO], 
+          responseModalalities: [Modality.AUDIO], 
           outputAudioTranscription: {}, 
           systemInstruction: getSystemInstruction(),
           speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: persona.voiceSignature || 'Kore' } } }
@@ -147,7 +148,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
         }
       });
 
-      setMessages(prev => [...prev, { role: 'model', text: response.text || "Synchronicity error.", timestamp: new Date() }]);
+      const modelResponse: Message = { role: 'model', text: response.text || "Synchronicity error.", timestamp: new Date() };
+      setMessages(prev => [...prev, modelResponse]);
       setSyncFidelity(prev => Math.min(99, prev + 1));
     } catch (error) { console.error(error); } finally { setIsLoading(false); }
   };
