@@ -47,7 +47,8 @@ CMD ["nginx", "-g", "daemon off;"]`,
     entrypoint: gcloud
     args: ['run', 'deploy', 'motokage-studio', '--image', 'gcr.io/$PROJECT_ID/motokage-studio', '--region', 'us-central1', '--platform', 'managed', '--allow-unauthenticated']
 images: ['gcr.io/$PROJECT_ID/motokage-studio']
-options: { logging: CLOUD_LOGGING_ONLY }`
+options: { logging: CLOUD_LOGGING_ONLY }`,
+  '.dockerignore': `node_modules\ndist\n.git\nREADME.md\n.gitignore`
 };
 
 const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona, setPersona }) => {
@@ -69,7 +70,7 @@ const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona, setPerso
     'components/Header.tsx', 'components/PersonaForm.tsx', 'components/ArchitectureView.tsx',
     'components/MemoryVault.tsx', 'components/NexusView.tsx', 'components/ChatInterface.tsx',
     'components/ComparisonView.tsx', 'components/ShadowSyncConsole.tsx', 'components/StagingView.tsx', 
-    'Dockerfile', 'cloudbuild.yaml', 'package.json', 'vite.config.ts', 'tsconfig.json'
+    'Dockerfile', 'cloudbuild.yaml', '.dockerignore', 'package.json', 'vite.config.ts', 'tsconfig.json'
   ];
 
   const fetchFileContent = async (path: string) => {
