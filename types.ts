@@ -1,21 +1,36 @@
 
+export enum TabType {
+  ARCHITECTURE = 'ARCHITECTURE',
+  BUILDER = 'BUILDER',
+  MEMORY = 'MEMORY',
+  NEXUS = 'NEXUS',
+  CHAT = 'CHAT',
+  STAGING = 'STAGING'
+}
+
+export type MemoryCategory = 'axiom' | 'chronos' | 'echo' | 'logos' | 'ethos';
+export type NeuralCoreType = 'local' | 'vector_mesh';
+export type SensitivityLevel = 'PRIVATE' | 'PUBLIC';
+export type AccessLevel = 'CORE' | 'AMBASSADOR';
+
 export interface MemoryShard {
   id: string;
-  category: 'chronos' | 'axiom' | 'echo';
+  category: MemoryCategory;
   title: string;
   content: string;
   active: boolean;
-  sourceUrl?: string;
+  sensitivity: SensitivityLevel;
   lastSynced?: Date;
+  vectorId?: string;
 }
 
 export interface CloudSource {
   id: string;
   accountEmail: string;
-  provider: 'drive' | 'github' | 'notion' | 'linkedin';
-  status: 'connected' | 'syncing' | 'error';
+  provider: 'drive' | 'dropbox' | 'notion' | 'github' | 'linkedin' | 'gmail' | 'calendar';
+  status: 'connected' | 'disconnected' | 'syncing';
   linkedFolders: string[];
-  lastSynced?: Date;
+  lastSynced: Date;
 }
 
 export interface Persona {
@@ -25,19 +40,15 @@ export interface Persona {
   coreValues: string[];
   bio: string;
   knowledgeBase: string;
-  ragSource?: string;
-  agentLogic?: string;
+  ragSource: string;
+  agentLogic: string;
   memoryShards: MemoryShard[];
   voiceSignature: string;
   cloudSources: CloudSource[];
-}
-
-export enum TabType {
-  ARCHITECTURE = 'architecture',
-  BUILDER = 'builder',
-  MEMORY = 'memory',
-  NEXUS = 'nexus',
-  CHAT = 'chat'
+  targetComplexity: number;
+  neuralCoreType: NeuralCoreType;
+  vectorEnabled: boolean;
+  accessLevel: AccessLevel;
 }
 
 export interface Message {
@@ -45,4 +56,12 @@ export interface Message {
   text: string;
   timestamp: Date;
   groundingSource?: string;
+  nexusSources?: string[];
+  isPrivate?: boolean;
+}
+
+export interface CloudSyncStatus {
+  lastUplink?: Date;
+  repoUrl?: string;
+  isHosted: boolean;
 }
