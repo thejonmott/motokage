@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { TabType, AccessLevel } from '../types';
 
@@ -9,6 +8,7 @@ interface HeaderProps {
   setIsSimulationMode: (val: boolean) => void;
   accessLevel: AccessLevel;
   setAccessLevel: (level: AccessLevel) => void;
+  isCloudSynced?: boolean;
 }
 
 const NavIcons = {
@@ -32,7 +32,7 @@ const NavIcons = {
   )
 };
 
-const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, isSimulationMode, setIsSimulationMode, accessLevel, setAccessLevel }) => {
+const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, isSimulationMode, setIsSimulationMode, accessLevel, setAccessLevel, isCloudSynced }) => {
   const [showKeyPrompt, setShowKeyPrompt] = useState(false);
   const [dnaKey, setDnaKey] = useState('');
 
@@ -55,7 +55,7 @@ const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, isSimulationMo
 
   const unlockCore = (e: React.FormEvent) => {
     e.preventDefault();
-    if (dnaKey === 'shadow_mesh_alpha') { // Demo key
+    if (dnaKey === 'shadow_mesh_alpha') {
       setAccessLevel('CORE');
       setShowKeyPrompt(false);
       setDnaKey('');
@@ -76,9 +76,9 @@ const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, isSimulationMo
               Motokage <span className={`${accessLevel === 'CORE' ? 'text-purple-400' : 'text-indigo-400'} font-light italic`}>Studio</span>
             </h1>
             <div className="flex items-center gap-2">
-              <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${accessLevel === 'CORE' ? 'bg-purple-500' : 'bg-indigo-500'}`}></span>
+              <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${isCloudSynced ? 'bg-green-500' : (accessLevel === 'CORE' ? 'bg-purple-500' : 'bg-indigo-500')}`}></span>
               <span className="text-[8px] text-slate-500 font-mono tracking-widest uppercase">
-                {accessLevel === 'CORE' ? 'ENCLAVE CORE_V7_SYNC' : 'IDENTITY MESH ONLINE'}
+                {isCloudSynced ? 'CLOUD_DNA_HYDRATED' : (accessLevel === 'CORE' ? 'ENCLAVE CORE_V7_SYNC' : 'IDENTITY MESH ONLINE')}
               </span>
             </div>
           </div>
@@ -103,7 +103,11 @@ const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, isSimulationMo
         </nav>
 
         <div className="flex items-center gap-3 bg-slate-950/50 p-1 rounded-xl border border-slate-900">
-           {/* Access Level Toggle */}
+           {isCloudSynced && (
+             <div className="px-2 py-1 bg-green-500/10 border border-green-500/20 rounded text-[7px] font-bold text-green-400 uppercase tracking-widest">
+               Synced
+             </div>
+           )}
            <button 
              onClick={handleLevelToggle}
              className={`px-3 py-2 rounded-lg text-[8px] font-bold uppercase tracking-widest border transition-all flex items-center gap-2 ${accessLevel === 'CORE' ? 'bg-purple-600/20 border-purple-500 text-purple-400' : 'bg-slate-900 border-slate-800 text-slate-600'}`}

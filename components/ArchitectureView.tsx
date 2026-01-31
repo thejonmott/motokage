@@ -1,18 +1,16 @@
-
 import React from 'react';
 import { Persona } from '../types';
 
 interface ArchitectureViewProps {
   persona: Persona;
+  isCloudSynced?: boolean;
 }
 
 const TopologyDiagram = () => (
   <div className="relative w-full max-w-5xl mx-auto py-24 px-4 overflow-hidden">
-    {/* Connection Glows */}
     <div className="absolute top-1/2 left-1/4 w-1/2 h-1 bg-gradient-to-r from-cyan-500/20 via-blue-500/20 to-indigo-500/20 blur-xl -translate-y-1/2"></div>
     
     <div className="grid grid-cols-1 md:grid-cols-4 gap-6 relative z-10">
-      {/* Sensory Layer */}
       <div className="flex flex-col items-center space-y-6 group">
         <div className="w-full aspect-square md:aspect-auto md:h-32 bg-slate-900 border border-cyan-500/30 rounded-[2.5rem] flex flex-col items-center justify-center p-6 group-hover:border-cyan-400 transition-all shadow-2xl relative overflow-hidden text-center">
           <div className="text-[8px] font-bold text-cyan-400 uppercase tracking-widest mb-1">Source Layer</div>
@@ -22,7 +20,6 @@ const TopologyDiagram = () => (
         <div className="w-px h-8 bg-gradient-to-b from-cyan-500/50 to-transparent"></div>
       </div>
 
-      {/* Deployment Layer */}
       <div className="flex flex-col items-center space-y-6 group">
         <div className="w-full aspect-square md:aspect-auto md:h-32 bg-slate-900 border border-blue-500/30 rounded-[2.5rem] flex flex-col items-center justify-center p-6 group-hover:border-blue-400 transition-all shadow-2xl relative overflow-hidden text-center">
           <div className="text-[8px] font-bold text-blue-400 uppercase tracking-widest mb-1">Compute Layer</div>
@@ -32,7 +29,6 @@ const TopologyDiagram = () => (
         <div className="w-px h-8 bg-gradient-to-b from-blue-500/50 to-transparent"></div>
       </div>
 
-      {/* Cognitive Layer */}
       <div className="flex flex-col items-center space-y-6 group">
         <div className="w-full aspect-square md:aspect-auto md:h-32 bg-slate-900 border border-indigo-500/30 rounded-[2.5rem] flex flex-col items-center justify-center p-6 group-hover:border-indigo-400 transition-all shadow-2xl relative overflow-hidden text-center">
           <div className="text-[8px] font-bold text-indigo-400 uppercase tracking-widest mb-1">Reasoning Core</div>
@@ -42,7 +38,6 @@ const TopologyDiagram = () => (
         <div className="w-px h-8 bg-gradient-to-b from-indigo-500/50 to-transparent"></div>
       </div>
 
-      {/* Persistence Layer */}
       <div className="flex flex-col items-center space-y-6 group">
         <div className="w-full aspect-square md:aspect-auto md:h-32 bg-slate-900 border border-emerald-500/30 rounded-[2.5rem] flex flex-col items-center justify-center p-6 group-hover:border-emerald-400 transition-all shadow-2xl relative overflow-hidden text-center">
           <div className="text-[8px] font-bold text-emerald-500 uppercase tracking-widest mb-1">Persistence Enclave</div>
@@ -57,13 +52,15 @@ const TopologyDiagram = () => (
   </div>
 );
 
-const ArchitectureView: React.FC<ArchitectureViewProps> = ({ persona }) => {
+const ArchitectureView: React.FC<ArchitectureViewProps> = ({ persona, isCloudSynced }) => {
   return (
     <div className="animate-in fade-in duration-1000 space-y-20 pb-20">
       <section className="text-center space-y-8 max-w-5xl mx-auto pt-12">
-        <div className="inline-flex items-center gap-3 px-5 py-2 bg-slate-900 border border-slate-800 rounded-full shadow-2xl">
-          <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span>
-          <span className="text-[10px] font-bold text-slate-300 uppercase tracking-[0.5em]">Hosted Topology v4.0 (Cloud Run)</span>
+        <div className={`inline-flex items-center gap-3 px-5 py-2 bg-slate-900 border rounded-full shadow-2xl transition-all ${isCloudSynced ? 'border-green-500/50' : 'border-slate-800'}`}>
+          <span className={`w-2 h-2 rounded-full animate-pulse ${isCloudSynced ? 'bg-green-500' : 'bg-blue-500'}`}></span>
+          <span className="text-[10px] font-bold text-slate-300 uppercase tracking-[0.5em]">
+            {isCloudSynced ? 'Cloud Identity Verified v4.2' : 'Hosted Topology v4.0'}
+          </span>
         </div>
         
         <div className="space-y-6">
@@ -106,12 +103,12 @@ const ArchitectureView: React.FC<ArchitectureViewProps> = ({ persona }) => {
           <h4 className="text-[10px] font-bold text-indigo-400 uppercase tracking-[0.4em] mb-8">Cloud Provisioning Checklist</h4>
           <div className="space-y-4">
             {[
-              { step: '1', text: 'Click "Deploy an application" (Cloud Run) in GCP Console.' },
-              { step: '2', text: 'Select "Continuously deploy from a repository".' },
-              { step: '3', text: 'Connect GitHub and select your "motokage" repo.' },
-              { step: '4', text: 'Choose "Dockerfile" as the build configuration.' },
-              { step: '5', text: 'Set "Authentication" to "Allow unauthenticated invocations".' },
-              { step: '6', text: 'In "Variables & Secrets", add API_KEY with your Gemini key.' }
+              { step: '1', text: 'Cloud Run Service deployed and reachable.' },
+              { step: '2', text: 'GitHub Repository connected to Cloud Build.' },
+              { step: '3', text: 'Atomic DNA handshakes (shadow_config.json) enabled.' },
+              { step: '4', text: 'Identity Hydration Protocol online.' },
+              { step: '5', text: 'Port 8080 properly exposed in Dockerfile.' },
+              { step: '6', text: 'Gemini API Key secured in Secret Manager.' }
             ].map((item, i) => (
               <div key={i} className="flex gap-4 items-start group">
                 <span className="w-6 h-6 rounded-full bg-slate-950 border border-slate-800 flex items-center justify-center text-[10px] font-bold text-indigo-500 shrink-0 group-hover:border-indigo-500 transition-all">{item.step}</span>
@@ -131,7 +128,7 @@ const ArchitectureView: React.FC<ArchitectureViewProps> = ({ persona }) => {
                    { label: 'Runtime Environment', val: 'Google Cloud Run' },
                    { label: 'Source Management', val: 'GitHub (Direct Sync)' },
                    { label: 'Build Pipeline', val: 'Google Cloud Build' },
-                   { label: 'Secret Management', val: 'GCP Secret Manager' }
+                   { label: 'Identity Hydration', val: 'Remote JSON Handshake' }
                  ].map((item, i) => (
                    <div key={i} className="flex justify-between items-center py-4 border-b border-slate-800 last:border-0 group">
                      <span className="text-[10px] font-mono text-slate-500 uppercase group-hover:text-slate-300 transition-colors">{item.label}</span>
@@ -140,10 +137,16 @@ const ArchitectureView: React.FC<ArchitectureViewProps> = ({ persona }) => {
                  ))}
                </div>
             </div>
-            <div className="p-10 bg-indigo-500/5 rounded-[3rem] border border-indigo-500/10 text-center">
-               <div className="text-[8px] font-bold text-indigo-500 uppercase tracking-[0.5em] mb-4">Evolution Status</div>
-               <div className="text-2xl font-bold text-white font-heading">PROVISIONING_REQUIRED</div>
-               <p className="text-[9px] text-slate-500 font-mono mt-4 uppercase leading-relaxed">Follow the checklist above to complete the handshake between GitHub and Google Cloud.</p>
+            <div className={`p-10 rounded-[3rem] border text-center transition-all ${isCloudSynced ? 'bg-green-500/5 border-green-500/20' : 'bg-indigo-500/5 border-indigo-500/10'}`}>
+               <div className={`text-[8px] font-bold uppercase tracking-[0.5em] mb-4 ${isCloudSynced ? 'text-green-500' : 'text-indigo-500'}`}>Evolution Status</div>
+               <div className="text-2xl font-bold text-white font-heading">
+                 {isCloudSynced ? 'IDENTITY_SYNC_ESTABLISHED' : 'PROVISIONING_REQUIRED'}
+               </div>
+               <p className="text-[9px] text-slate-500 font-mono mt-4 uppercase leading-relaxed">
+                 {isCloudSynced 
+                   ? 'Remote DNA has successfully hydrated this browser session.' 
+                   : 'Follow the checklist above to complete the handshake between GitHub and Google Cloud.'}
+               </p>
             </div>
          </div>
       </div>

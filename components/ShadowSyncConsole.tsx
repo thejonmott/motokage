@@ -57,13 +57,11 @@ const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona }) => {
       const manifests = getSystemManifests();
       const allFiles = [...sourceFiles, ...Object.keys(manifests)];
       
-      // 1. Get reference to main branch
       const refRes = await fetch(`https://api.github.com/repos/${repo}/git/refs/heads/main`, { headers });
       if (!refRes.ok) throw new Error("Could not find 'main' branch. Ensure repo exists and is initialized.");
       const refData = await refRes.json();
       const latestCommitSha = refData.object.sha;
 
-      // 2. Create Blobs
       const treeItems: any[] = [];
       for (let i = 0; i < allFiles.length; i++) {
         const path = allFiles[i];
@@ -85,26 +83,20 @@ const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona }) => {
         setProgress(Math.round(((i + 1) / allFiles.length) * 50));
       }
 
-      // 3. Create Tree
-      setCurrentFile('Finalizing DNA Tree...');
       const treeRes = await fetch(`https://api.github.com/repos/${repo}/git/trees`, {
         method: 'POST',
         headers,
         body: JSON.stringify({ base_tree: latestCommitSha, tree: treeItems })
       });
       const treeData = await treeRes.json();
-      setProgress(75);
-
-      // 4. Create Commit
+      
       const commitRes = await fetch(`https://api.github.com/repos/${repo}/git/commits`, {
         method: 'POST',
         headers,
         body: JSON.stringify({ message: `Atomic Sync: ${new Date().toISOString()}`, tree: treeData.sha, parents: [latestCommitSha] })
       });
       const commitData = await commitRes.json();
-      setProgress(90);
 
-      // 5. Update Ref (The Atomic Moment)
       await fetch(`https://api.github.com/repos/${repo}/git/refs/heads/main`, {
         method: 'PATCH',
         headers,
@@ -122,12 +114,21 @@ const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona }) => {
     <div className="bg-slate-900 border border-slate-800 rounded-[3rem] p-10 shadow-2xl space-y-8">
       <div className="flex justify-between items-center border-b border-slate-800 pb-6">
         <div>
-          <h3 className="text-sm font-bold text-white uppercase tracking-widest">Cloud Uplink v3.0</h3>
+          <h3 className="text-sm font-bold text-white uppercase tracking-widest">Cloud Uplink v3.1</h3>
           <p className="text-[10px] text-slate-500 font-mono uppercase mt-1">Atomic Commit Protocol (Single-Trigger)</p>
         </div>
         <div className="flex items-center gap-3">
+          <a 
+            href="https://console.cloud.google.com/run" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="px-3 py-1.5 bg-slate-950 border border-slate-800 rounded-lg text-[8px] font-bold text-indigo-400 uppercase tracking-widest hover:border-indigo-500/50 transition-all flex items-center gap-2"
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/></svg>
+            GCP Console
+          </a>
           <div className={`w-2 h-2 rounded-full ${status.type === 'loading' ? 'bg-blue-500 animate-pulse' : 'bg-green-500'}`}></div>
-          <span className="text-[9px] font-mono text-slate-500 uppercase">Uplink_Optimized</span>
+          <span className="text-[9px] font-mono text-slate-500 uppercase">Uplink_Online</span>
         </div>
       </div>
       <div className="grid md:grid-cols-2 gap-6">

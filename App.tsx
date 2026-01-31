@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { TabType, Persona, Message, MemoryShard, CloudSource, AccessLevel } from './types';
 import Header from './components/Header';
@@ -27,14 +26,6 @@ const INITIAL_SHARDS: MemoryShard[] = [
     content: 'Lifelong Goals: 1. Provide for family. 2. Make an impact on the world. 3. Help millions of people realize, pursue, and achieve their potential and goals.', 
     active: true,
     sensitivity: 'PUBLIC'
-  },
-  { 
-    id: 'private_1', 
-    category: 'axiom', 
-    title: 'Personal Vulnerability', 
-    content: 'Reflective thought on scaling human potential: I often worry that technology outpaces our ability to remain human. My twin must counteract this by centering empathy.', 
-    active: true,
-    sensitivity: 'PRIVATE'
   }
 ];
 
@@ -43,7 +34,7 @@ const INITIAL_PERSONA: Persona = {
   profession: 'AI Product Strategist',
   tone: 'Mission-Driven Visionary',
   coreValues: ['Family Provision', 'Global Impact', 'Human Potential', 'Strategic AI'],
-  bio: 'Motokage is a high-fidelity digital twin of Jonathan Mott, architected to scale his strategic judgment and professional expertise.',
+  bio: 'Motokage is a high-fidelity digital twin architected to scale strategic judgment and professional expertise.',
   knowledgeBase: '',
   ragSource: 'Vertex AI Vector Search',
   agentLogic: 'Reflective Reasoning Loop',
@@ -60,8 +51,8 @@ const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>(TabType.ARCHITECTURE);
   const [isSimulationMode, setIsSimulationMode] = useState(false);
   const [accessLevel, setAccessLevel] = useState<AccessLevel>('AMBASSADOR');
+  const [isCloudSynced, setIsCloudSynced] = useState(false);
   
-  // SESSION ISOLATION: Separate buffers for Core and Ambassador conversations
   const [coreMessages, setCoreMessages] = useState<Message[]>([]);
   const [ambassadorMessages, setAmbassadorMessages] = useState<Message[]>([]);
 
@@ -69,8 +60,7 @@ const App: React.FC = () => {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       try {
-        const parsed = JSON.parse(saved);
-        return parsed as Persona;
+        return JSON.parse(saved) as Persona;
       } catch (e) {
         return INITIAL_PERSONA;
       }
@@ -78,15 +68,30 @@ const App: React.FC = () => {
     return INITIAL_PERSONA;
   });
 
+  // IDENTITY HYDRATION: Check for cloud-synced DNA on boot
+  useEffect(() => {
+    const hydrateIdentity = async () => {
+      try {
+        const response = await fetch('/shadow_config.json');
+        if (response.ok) {
+          const cloudPersona = await response.json();
+          setPersona(cloudPersona);
+          setIsCloudSynced(true);
+          console.log("IDENTITY_HYDRATED: Cloud DNA merged successfully.");
+        }
+      } catch (err) {
+        console.log("LOCAL_SESSION: No remote DNA found. Defaulting to local cache.");
+      }
+    };
+    hydrateIdentity();
+  }, []);
+
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(persona));
   }, [persona]);
 
-  // Handle visual shifts and session purging
   const handleLevelChange = (newLevel: AccessLevel) => {
     if (newLevel === 'AMBASSADOR' && accessLevel === 'CORE') {
-      // PURGE PROTOCOL: When locking the enclave, wipe the private message buffer
-      // This ensures no sensitive data remains in the "cache" (local state)
       setCoreMessages([]);
       console.log("ENCLAVE PURGE: Private session data destroyed.");
     }
@@ -109,16 +114,12 @@ const App: React.FC = () => {
         setIsSimulationMode={setIsSimulationMode}
         accessLevel={accessLevel}
         setAccessLevel={handleLevelChange}
+        isCloudSynced={isCloudSynced}
       />
       
       <main className={`flex-grow transition-all duration-700 ${isSimulationMode ? 'flex items-center justify-center p-4' : 'container mx-auto px-4 py-8 max-w-7xl'}`}>
-        {/*
-          CRITICAL SECURITY: We use `key={accessLevel}` on components.
-          When accessLevel changes, React will UNMOUNT the old component and MOUNT a new one.
-          This instantly clears all internal component state (input fields, local logs, etc).
-        */}
         <div key={`${accessLevel}-${activeTab}`} className="w-full h-full">
-          {activeTab === TabType.ARCHITECTURE && <ArchitectureView persona={persona} />}
+          {activeTab === TabType.ARCHITECTURE && <ArchitectureView persona={persona} isCloudSynced={isCloudSynced} />}
           {activeTab === TabType.BUILDER && <PersonaForm persona={persona} setPersona={setPersona} onSave={() => setActiveTab(TabType.MEMORY)} />}
           {activeTab === TabType.MEMORY && <MemoryVault persona={persona} setPersona={setPersona} accessLevel={accessLevel} />}
           {activeTab === TabType.NEXUS && <NexusView persona={persona} setPersona={setPersona} />}
@@ -129,7 +130,7 @@ const App: React.FC = () => {
 
       {!isSimulationMode && (
         <footer className="py-8 border-t border-slate-900 text-center text-slate-500 text-sm">
-          <p>© 2026 Motokage Studio (元影) • {accessLevel === 'CORE' ? 'ENCRYPTED SESSION' : 'AMBASSADOR MODE'}</p>
+          <p>© 2026 Motokage Studio (元影) • {accessLevel === 'CORE' ? 'ENCRYPTED SESSION' : 'AMBASSADOR MODE'} • {isCloudSynced ? 'CLOUD_HYDRATED' : 'LOCAL_INSTANCE'}</p>
         </footer>
       )}
     </div>
