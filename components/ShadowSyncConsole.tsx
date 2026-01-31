@@ -32,115 +32,102 @@ const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona }) => {
   ];
 
   const getSystemManifests = () => ({
-    // Specialized Dockerfile for Cloud Run (Nginx on 8080)
-    'Dockerfile': `FROM node:20-slim AS build
-WORKDIR /app
-COPY package*.json ./
-RUN npm install
-COPY . .
-RUN npm run build
-
-FROM nginx:alpine
-# Reconfigure Nginx to listen on 8080 for Cloud Run
-RUN sed -i 's/80/8080/g' /etc/nginx/conf.d/default.conf
-COPY --from=build /app/dist /usr/share/nginx/html
-EXPOSE 8080
-CMD ["nginx", "-g", "daemon off;"]`,
-
-    'cloudbuild.yaml': `steps:
-  - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', 'gcr.io/$PROJECT_ID/motokage-studio', '.']
-  - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'gcr.io/$PROJECT_ID/motokage-studio']
-  - name: 'gcloud'
-    args: [
-      'run', 'deploy', 'motokage-studio', 
-      '--image', 'gcr.io/$PROJECT_ID/motokage-studio', 
-      '--region', 'us-central1', 
-      '--platform', 'managed', 
-      '--allow-unauthenticated',
-      '--port', '8080'
-    ]
-images: ['gcr.io/$PROJECT_ID/motokage-studio']`,
-
+    'Dockerfile': `FROM node:20-slim AS build\nWORKDIR /app\nCOPY package*.json ./\nRUN npm install\nCOPY . .\nRUN npm run build\n\nFROM nginx:alpine\nRUN sed -i 's/80/8080/g' /etc/nginx/conf.d/default.conf\nCOPY --from=build /app/dist /usr/share/nginx/html\nEXPOSE 8080\nCMD ["nginx", "-g", "daemon off;"]`,
+    'cloudbuild.yaml': `steps:\n  - name: 'gcr.io/cloud-builders/docker'\n    args: ['build', '-t', 'gcr.io/$PROJECT_ID/motokage-studio', '.']\n  - name: 'gcr.io/cloud-builders/docker'\n    args: ['push', 'gcr.io/$PROJECT_ID/motokage-studio']\n  - name: 'gcloud'\n    args: ['run', 'deploy', 'motokage-studio', '--image', 'gcr.io/$PROJECT_ID/motokage-studio', '--region', 'us-central1', '--platform', 'managed', '--allow-unauthenticated', '--port', '8080']\nimages: ['gcr.io/$PROJECT_ID/motokage-studio']`,
     '.dockerignore': `node_modules\ndist\n.git\n.DS_Store`,
-    
     'package.json': JSON.stringify({
       "name": "motokage-studio",
       "private": true,
       "version": "1.0.0",
       "type": "module",
-      "scripts": {
-        "dev": "vite",
-        "build": "vite build",
-        "preview": "vite preview"
-      },
-      "dependencies": {
-        "@google/genai": "^1.38.0",
-        "react": "^19.0.0",
-        "react-dom": "^19.0.0"
-      },
-      "devDependencies": {
-        "@types/react": "^19.0.0",
-        "@types/react-dom": "^19.0.0",
-        "@vitejs/plugin-react": "^4.3.4",
-        "typescript": "^5.7.3",
-        "vite": "^6.0.7"
-      }
+      "scripts": { "dev": "vite", "build": "vite build", "preview": "vite preview" },
+      "dependencies": { "@google/genai": "^1.38.0", "react": "^19.0.0", "react-dom": "^19.0.0" },
+      "devDependencies": { "@types/react": "^19.0.0", "@types/react-dom": "^19.0.0", "@vitejs/plugin-react": "^4.3.4", "typescript": "^5.7.3", "vite": "^6.0.7" }
     }, null, 2),
-    
     'shadow_config.json': JSON.stringify(persona, null, 2)
   });
 
-  const uploadFile = async (path: string, content: string) => {
-    const url = `https://api.github.com/repos/${repo}/contents/${path}`;
-    const getRes = await fetch(url, { headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github.v3+json' } });
-    let sha;
-    if (getRes.ok) { const data = await getRes.json(); sha = data.sha; }
-    const putRes = await fetch(url, {
-      method: 'PUT',
-      headers: { 'Authorization': `token ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: `sync: ${path}`, content: toBase64(content), sha })
-    });
-    if (!putRes.ok) throw new Error(`Failed to upload ${path}`);
-  };
-
-  const handleSync = async () => {
+  const handleAtomicSync = async () => {
     if (!repo || !token) { setStatus({ type: 'error', msg: 'Missing Repo or Token' }); return; }
     setStatus({ type: 'loading' });
     setProgress(0);
+
     try {
+      const headers = { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json' };
       const manifests = getSystemManifests();
       const allFiles = [...sourceFiles, ...Object.keys(manifests)];
+      
+      // 1. Get reference to main branch
+      const refRes = await fetch(`https://api.github.com/repos/${repo}/git/refs/heads/main`, { headers });
+      if (!refRes.ok) throw new Error("Could not find 'main' branch. Ensure repo exists and is initialized.");
+      const refData = await refRes.json();
+      const latestCommitSha = refData.object.sha;
+
+      // 2. Create Blobs
+      const treeItems: any[] = [];
       for (let i = 0; i < allFiles.length; i++) {
         const path = allFiles[i];
         setCurrentFile(path);
-        let content = '';
-        if (manifests[path as keyof typeof manifests]) {
-          content = manifests[path as keyof typeof manifests];
-        } else {
+        let content = manifests[path as keyof typeof manifests] || '';
+        if (!content) {
           const res = await fetch(path);
           if (!res.ok) continue;
           content = await res.text();
         }
-        await uploadFile(path, content);
-        await new Promise(r => setTimeout(r, 450));
-        setProgress(Math.round(((i + 1) / allFiles.length) * 100));
+
+        const blobRes = await fetch(`https://api.github.com/repos/${repo}/git/blobs`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ content: toBase64(content), encoding: 'base64' })
+        });
+        const blobData = await blobRes.json();
+        treeItems.push({ path, mode: '100644', type: 'blob', sha: blobData.sha });
+        setProgress(Math.round(((i + 1) / allFiles.length) * 50));
       }
-      setStatus({ type: 'success', msg: 'Uplink Ready. Cloud Run build initiated on Port 8080.' });
-    } catch (e: any) { setStatus({ type: 'error', msg: e.message }); }
+
+      // 3. Create Tree
+      setCurrentFile('Finalizing DNA Tree...');
+      const treeRes = await fetch(`https://api.github.com/repos/${repo}/git/trees`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ base_tree: latestCommitSha, tree: treeItems })
+      });
+      const treeData = await treeRes.json();
+      setProgress(75);
+
+      // 4. Create Commit
+      const commitRes = await fetch(`https://api.github.com/repos/${repo}/git/commits`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ message: `Atomic Sync: ${new Date().toISOString()}`, tree: treeData.sha, parents: [latestCommitSha] })
+      });
+      const commitData = await commitRes.json();
+      setProgress(90);
+
+      // 5. Update Ref (The Atomic Moment)
+      await fetch(`https://api.github.com/repos/${repo}/git/refs/heads/main`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({ sha: commitData.sha })
+      });
+
+      setProgress(100);
+      setStatus({ type: 'success', msg: 'Atomic Uplink Successful. Single build triggered.' });
+    } catch (e: any) {
+      setStatus({ type: 'error', msg: e.message });
+    }
   };
 
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-[3rem] p-10 shadow-2xl space-y-8">
       <div className="flex justify-between items-center border-b border-slate-800 pb-6">
         <div>
-          <h3 className="text-sm font-bold text-white uppercase tracking-widest">Cloud Uplink v2.2</h3>
-          <p className="text-[10px] text-slate-500 font-mono uppercase mt-1">Port 8080 Alignment for Cloud Run</p>
+          <h3 className="text-sm font-bold text-white uppercase tracking-widest">Cloud Uplink v3.0</h3>
+          <p className="text-[10px] text-slate-500 font-mono uppercase mt-1">Atomic Commit Protocol (Single-Trigger)</p>
         </div>
         <div className="flex items-center gap-3">
-          <div className={`w-2 h-2 rounded-full ${status.type === 'loading' ? 'bg-blue-500 animate-pulse' : 'bg-slate-700'}`}></div>
-          <span className="text-[9px] font-mono text-slate-500 uppercase">Uplink_Active</span>
+          <div className={`w-2 h-2 rounded-full ${status.type === 'loading' ? 'bg-blue-500 animate-pulse' : 'bg-green-500'}`}></div>
+          <span className="text-[9px] font-mono text-slate-500 uppercase">Uplink_Optimized</span>
         </div>
       </div>
       <div className="grid md:grid-cols-2 gap-6">
@@ -154,13 +141,13 @@ images: ['gcr.io/$PROJECT_ID/motokage-studio']`,
         </div>
       </div>
       <div className="space-y-6">
-        <button onClick={handleSync} disabled={status.type === 'loading'} className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white py-5 rounded-2xl font-bold text-[10px] uppercase tracking-[0.3em] transition-all shadow-xl">
-          {status.type === 'loading' ? 'Injecting Port 8080 Config...' : 'Sync & Deploy to Cloud'}
+        <button onClick={handleAtomicSync} disabled={status.type === 'loading'} className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white py-5 rounded-2xl font-bold text-[10px] uppercase tracking-[0.3em] transition-all shadow-xl">
+          {status.type === 'loading' ? 'Executing Atomic Commit...' : 'Initialize Atomic Deploy'}
         </button>
         {status.type === 'loading' && (
           <div className="space-y-3">
             <div className="h-1.5 w-full bg-slate-950 rounded-full overflow-hidden"><div className="h-full bg-blue-500 transition-all duration-300" style={{ width: `${progress}%` }}></div></div>
-            <p className="text-[8px] text-slate-500 font-mono text-center uppercase tracking-widest">Pushing: <span className="text-white">{currentFile}</span> ({progress}%)</p>
+            <p className="text-[8px] text-slate-500 font-mono text-center uppercase tracking-widest">Processing: <span className="text-white">{currentFile}</span></p>
           </div>
         )}
         {status.msg && (
