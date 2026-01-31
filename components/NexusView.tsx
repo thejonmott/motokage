@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Persona, CloudSource } from '../types';
 import ShadowSyncConsole from './ShadowSyncConsole';
@@ -16,6 +15,14 @@ const MarinerIcon = () => (
     <circle cx="12" cy="12" r="3" fill="currentColor" fillOpacity="0.3" />
   </svg>
 );
+
+interface MarinerCapture {
+  timestamp: string;
+  title: string;
+  domain: string;
+  priority: boolean;
+  status: 'accepted' | 'discarded';
+}
 
 const DecisionLog = () => {
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
@@ -86,7 +93,7 @@ const DecisionLog = () => {
 };
 
 const NexusView: React.FC<NexusViewProps> = ({ persona, setPersona }) => {
-  const [marinerCaptures, setMarinerCaptures] = useState<{timestamp: string, title: string, domain: string, priority: boolean, status: 'accepted' | 'discarded'}[]>([]);
+  const [marinerCaptures, setMarinerCaptures] = useState<MarinerCapture[]>([]);
   const [whitelist, setWhitelist] = useState(['notebooklm.google.com', 'github.com', 'mott.io', 'docs.google.com']);
   const [strictAttention, setStrictAttention] = useState(true);
   const [isSimulating, setIsSimulating] = useState(false);
@@ -97,7 +104,7 @@ const NexusView: React.FC<NexusViewProps> = ({ persona, setPersona }) => {
       const domain = data.domain || 'unknown.site';
       const isPriority = whitelist.some(d => domain.includes(d));
       
-      const captureStatus = isPriority ? 'accepted' : 'discarded';
+      const captureStatus: 'accepted' | 'discarded' = isPriority ? 'accepted' : 'discarded';
 
       if (strictAttention && !isPriority) {
         setMarinerCaptures(prev => [{
@@ -105,7 +112,7 @@ const NexusView: React.FC<NexusViewProps> = ({ persona, setPersona }) => {
           title: data.title || 'Noise Filtered',
           domain,
           priority: false,
-          status: 'discarded'
+          status: 'discarded' as const
         }, ...prev].slice(0, 5));
         return;
       }
@@ -115,7 +122,7 @@ const NexusView: React.FC<NexusViewProps> = ({ persona, setPersona }) => {
         title: data.title || 'Context Capture',
         domain,
         priority: isPriority,
-        status: 'accepted'
+        status: captureStatus
       }, ...prev].slice(0, 5));
     };
 
