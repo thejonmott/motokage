@@ -1,6 +1,6 @@
 {
-  "name": "Motokage Studio",
-  "description": "Jon Mott's Digital Twin",
+  "name": "Motokage Studio (元影)",
+  "description": "A digital twin architecting studio for creating, managing, and interacting with high-fidelity AI reflections of human personas.",
   "requestFramePermissions": [
     "microphone"
   ]
