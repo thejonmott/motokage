@@ -4,5 +4,12 @@ steps:
   - name: 'gcr.io/cloud-builders/docker'
     args: ['push', 'gcr.io/$PROJECT_ID/motokage-studio']
   - name: 'gcloud'
-    args: ['run', 'deploy', 'motokage-studio', '--image', 'gcr.io/$PROJECT_ID/motokage-studio', '--region', 'us-central1', '--platform', 'managed', '--allow-unauthenticated']
+    args: [
+      'run', 'deploy', 'motokage-studio', 
+      '--image', 'gcr.io/$PROJECT_ID/motokage-studio', 
+      '--region', 'us-central1', 
+      '--platform', 'managed', 
+      '--allow-unauthenticated',
+      '--port', '8080'
+    ]
 images: ['gcr.io/$PROJECT_ID/motokage-studio']
