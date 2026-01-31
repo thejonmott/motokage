@@ -32,9 +32,39 @@ const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona }) => {
   ];
 
   const getSystemManifests = () => ({
-    'Dockerfile': `FROM node:20-slim AS build\nWORKDIR /app\nCOPY package*.json ./\nRUN npm install\nCOPY . .\nRUN npm run build\n\nFROM nginx:alpine\nCOPY --from=build /app/dist /usr/share/nginx/html\nEXPOSE 80\nCMD ["nginx", "-g", "daemon off;"]`,
-    'cloudbuild.yaml': `steps:\n  - name: 'gcr.io/cloud-builders/docker'\n    args: ['build', '-t', 'gcr.io/$PROJECT_ID/motokage-studio', '.']\n  - name: 'gcr.io/cloud-builders/docker'\n    args: ['push', 'gcr.io/$PROJECT_ID/motokage-studio']\n  - name: 'gcloud'\n    args: ['run', 'deploy', 'motokage-studio', '--image', 'gcr.io/$PROJECT_ID/motokage-studio', '--region', 'us-central1', '--platform', 'managed', '--allow-unauthenticated']\nimages: ['gcr.io/$PROJECT_ID/motokage-studio']`,
+    // Specialized Dockerfile for Cloud Run (Nginx on 8080)
+    'Dockerfile': `FROM node:20-slim AS build
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+RUN npm run build
+
+FROM nginx:alpine
+# Reconfigure Nginx to listen on 8080 for Cloud Run
+RUN sed -i 's/80/8080/g' /etc/nginx/conf.d/default.conf
+COPY --from=build /app/dist /usr/share/nginx/html
+EXPOSE 8080
+CMD ["nginx", "-g", "daemon off;"]`,
+
+    'cloudbuild.yaml': `steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/$PROJECT_ID/motokage-studio', '.']
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/motokage-studio']
+  - name: 'gcloud'
+    args: [
+      'run', 'deploy', 'motokage-studio', 
+      '--image', 'gcr.io/$PROJECT_ID/motokage-studio', 
+      '--region', 'us-central1', 
+      '--platform', 'managed', 
+      '--allow-unauthenticated',
+      '--port', '8080'
+    ]
+images: ['gcr.io/$PROJECT_ID/motokage-studio']`,
+
     '.dockerignore': `node_modules\ndist\n.git\n.DS_Store`,
+    
     'package.json': JSON.stringify({
       "name": "motokage-studio",
       "private": true,
@@ -58,6 +88,7 @@ const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona }) => {
         "vite": "^6.0.7"
       }
     }, null, 2),
+    
     'shadow_config.json': JSON.stringify(persona, null, 2)
   });
 
@@ -96,7 +127,7 @@ const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona }) => {
         await new Promise(r => setTimeout(r, 450));
         setProgress(Math.round(((i + 1) / allFiles.length) * 100));
       }
-      setStatus({ type: 'success', msg: 'Uplink Ready. Cloud Run build initiated.' });
+      setStatus({ type: 'success', msg: 'Uplink Ready. Cloud Run build initiated on Port 8080.' });
     } catch (e: any) { setStatus({ type: 'error', msg: e.message }); }
   };
 
@@ -104,12 +135,12 @@ const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona }) => {
     <div className="bg-slate-900 border border-slate-800 rounded-[3rem] p-10 shadow-2xl space-y-8">
       <div className="flex justify-between items-center border-b border-slate-800 pb-6">
         <div>
-          <h3 className="text-sm font-bold text-white uppercase tracking-widest">Cloud Uplink v2.1</h3>
-          <p className="text-[10px] text-slate-500 font-mono uppercase mt-1">Refined Build Manifest for GCP</p>
+          <h3 className="text-sm font-bold text-white uppercase tracking-widest">Cloud Uplink v2.2</h3>
+          <p className="text-[10px] text-slate-500 font-mono uppercase mt-1">Port 8080 Alignment for Cloud Run</p>
         </div>
         <div className="flex items-center gap-3">
           <div className={`w-2 h-2 rounded-full ${status.type === 'loading' ? 'bg-blue-500 animate-pulse' : 'bg-slate-700'}`}></div>
-          <span className="text-[9px] font-mono text-slate-500 uppercase">Uplink_Ready</span>
+          <span className="text-[9px] font-mono text-slate-500 uppercase">Uplink_Active</span>
         </div>
       </div>
       <div className="grid md:grid-cols-2 gap-6">
@@ -124,7 +155,7 @@ const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona }) => {
       </div>
       <div className="space-y-6">
         <button onClick={handleSync} disabled={status.type === 'loading'} className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white py-5 rounded-2xl font-bold text-[10px] uppercase tracking-[0.3em] transition-all shadow-xl">
-          {status.type === 'loading' ? 'Pushing Manifests...' : 'Sync & Build Enclave'}
+          {status.type === 'loading' ? 'Injecting Port 8080 Config...' : 'Sync & Deploy to Cloud'}
         </button>
         {status.type === 'loading' && (
           <div className="space-y-3">
