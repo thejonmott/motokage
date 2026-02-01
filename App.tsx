@@ -39,12 +39,35 @@ const INITIAL_PERSONA: Persona = {
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>(TabType.STRATEGY);
   const [accessLevel, setAccessLevel] = useState<AccessLevel>('AMBASSADOR');
+  const [hasKey, setHasKey] = useState<boolean>(false);
   const [persona, setPersona] = useState<Persona>(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     return saved ? JSON.parse(saved) : INITIAL_PERSONA;
   });
 
   const [messages, setMessages] = useState<Message[]>([]);
+
+  // API Key Selection Handshake
+  useEffect(() => {
+    const checkKey = async () => {
+      if (window.aistudio?.hasSelectedApiKey) {
+        const selected = await window.aistudio.hasSelectedApiKey();
+        setHasKey(selected);
+      } else {
+        // Fallback for environments where selecting a key isn't required but process.env is provided
+        setHasKey(!!process.env.API_KEY);
+      }
+    };
+    checkKey();
+  }, []);
+
+  const handleOpenKeyPicker = async () => {
+    if (window.aistudio?.openSelectKey) {
+      await window.aistudio.openSelectKey();
+      // Assume success per instructions and proceed
+      setHasKey(true);
+    }
+  };
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(persona));
@@ -62,6 +85,7 @@ const App: React.FC = () => {
         setActiveTab={setActiveTab} 
         accessLevel={accessLevel}
         setAccessLevel={handleLevelChange}
+        hasKey={hasKey}
       />
       
       <main className="container mx-auto px-6 py-12 max-w-7xl">
@@ -72,13 +96,25 @@ const App: React.FC = () => {
           {activeTab === TabType.MOSAIC && <MosaicView persona={persona} setPersona={setPersona} accessLevel={accessLevel} />}
           {activeTab === TabType.DNA && <DNAView persona={persona} setPersona={setPersona} accessLevel={accessLevel} />}
           {activeTab === TabType.MANDATES && <MandatesView persona={persona} setPersona={setPersona} accessLevel={accessLevel} />}
-          {activeTab === TabType.SELF && <ChatInterface persona={persona} setPersona={setPersona} messages={messages} setMessages={setMessages} accessLevel={accessLevel} />}
+          
+          {activeTab === TabType.SELF && (
+            <ChatInterface 
+              persona={persona} 
+              setPersona={setPersona} 
+              messages={messages} 
+              setMessages={setMessages} 
+              accessLevel={accessLevel}
+              hasKey={hasKey}
+              onConnectKey={handleOpenKeyPicker}
+            />
+          )}
+
           {activeTab === TabType.DASHBOARD && <DashboardView persona={persona} setPersona={setPersona} accessLevel={accessLevel} />}
         </div>
       </main>
 
       <footer className="py-12 border-t border-slate-900 text-center text-slate-600 text-[9px] font-mono uppercase tracking-[0.3em]">
-        © 2026 Motokage • Open Architecture v14.5 • {accessLevel} MODE
+        © 2026 Motokage • Open Architecture v14.6 • {accessLevel} MODE
       </footer>
     </div>
   );

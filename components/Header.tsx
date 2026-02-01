@@ -6,6 +6,7 @@ interface HeaderProps {
   setActiveTab: (tab: TabType) => void;
   accessLevel: AccessLevel;
   setAccessLevel: (level: AccessLevel) => void;
+  hasKey: boolean;
 }
 
 const Icons = {
@@ -42,11 +43,11 @@ const TabConfig = {
   [TabType.MOSAIC]: { label: 'Mosaic', icon: <Icons.Mosaic /> },
   [TabType.DNA]: { label: 'DNA', icon: <Icons.DNA /> },
   [TabType.MANDATES]: { label: 'Mandates', icon: <Icons.Mandates /> },
-  [TabType.SELF]: { label: "Chat with Jon's Twin", icon: <Icons.Self /> },
-  [TabType.DASHBOARD]: { label: 'Studio Dashboard', icon: <Icons.Dashboard /> },
+  [TabType.SELF]: { label: "Chat with Twin", icon: <Icons.Self /> },
+  [TabType.DASHBOARD]: { label: 'Dashboard', icon: <Icons.Dashboard /> },
 };
 
-const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, accessLevel, setAccessLevel }) => {
+const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, accessLevel, setAccessLevel, hasKey }) => {
   const [showLogin, setShowLogin] = useState(false);
   const [pass, setPass] = useState('');
   
@@ -61,13 +62,8 @@ const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, accessLevel, s
   };
 
   const appEnv = getAppEnv();
-  
-  // Public tabs for recruiters and visitors
   const publicTabs = [TabType.STRATEGY, TabType.DOCUMENTATION, TabType.SELF];
-  
-  // Private tabs for Jon's internal studio work
   const coreTabs = [TabType.DNA, TabType.MANDATES, TabType.MOSAIC, TabType.ORIGIN, TabType.DASHBOARD];
-
   const currentTabs = accessLevel === 'CORE' ? [...publicTabs, ...coreTabs] : publicTabs;
 
   const handleLogin = (e: React.FormEvent) => {
@@ -86,7 +82,7 @@ const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, accessLevel, s
       <div className="container mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
         <div className="flex items-center gap-4 shrink-0">
           <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xl shadow-lg transition-all ${accessLevel === 'CORE' ? 'bg-purple-600 shadow-purple-500/20 rotate-3' : 'bg-indigo-600 shadow-indigo-500/20'}`}>影</div>
-          <div>
+          <div className="text-left">
             <div className="flex items-center gap-3">
               <div className="font-heading font-bold text-lg text-white tracking-tight">
                 {accessLevel === 'CORE' ? (
@@ -99,9 +95,12 @@ const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, accessLevel, s
                 <span className="px-2 py-0.5 bg-amber-500/10 border border-amber-500/30 text-amber-500 text-[8px] font-bold uppercase tracking-widest rounded">Calibration</span>
               )}
             </div>
-            <div className="flex items-center gap-2">
-              <span className={`w-1 h-1 rounded-full animate-pulse ${accessLevel === 'CORE' ? 'bg-purple-500' : 'bg-indigo-500'}`}></span>
-              <span className="text-[7px] font-mono text-slate-500 tracking-widest uppercase">Open Architecture v14.5 • us-central1</span>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5">
+                <span className={`w-1 h-1 rounded-full animate-pulse ${hasKey ? 'bg-emerald-500 shadow-[0_0_5px_rgba(16,185,129,0.8)]' : 'bg-rose-500 animate-none'}`}></span>
+                <span className="text-[7px] font-mono text-slate-500 tracking-widest uppercase">Uplink: {hasKey ? 'NOMINAL' : 'OFFLINE'}</span>
+              </div>
+              <span className="text-[7px] font-mono text-slate-600 tracking-widest uppercase">v14.6 • us-central1</span>
             </div>
           </div>
         </div>
