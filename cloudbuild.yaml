@@ -11,7 +11,7 @@ steps:
           docker build -t $$IMAGE_PATH --build-arg VITE_APP_ENV=production .
         fi
         docker push $$IMAGE_PATH
-  - name: 'gcloud run deploy'
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: 'bash'
     args:
       - '-c'

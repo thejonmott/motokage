@@ -36,7 +36,7 @@ const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona }) => {
     'components/MemoryVault.tsx', 'components/NexusView.tsx', 'components/ChatInterface.tsx',
     'components/ComparisonView.tsx', 'components/ShadowSyncConsole.tsx', 'components/StagingView.tsx',
     'components/DNAView.tsx', 'components/OriginStoryView.tsx', 'components/MosaicView.tsx',
-    'components/MandatesView.tsx', 'components/DashboardView.tsx', 'default.conf', 'Dockerfile', 'cloudbuild.yaml'
+    'components/MandatesView.tsx', 'components/DashboardView.tsx', 'components/DocumentationView.tsx', 'default.conf', 'Dockerfile', 'cloudbuild.yaml'
   ];
 
   const getSystemManifests = () => ({
@@ -83,7 +83,7 @@ CMD ["nginx", "-g", "daemon off;"]`,
           docker build -t $$IMAGE_PATH --build-arg VITE_APP_ENV=production .
         fi
         docker push $$IMAGE_PATH
-  - name: 'gcloud run deploy'
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: 'bash'
     args:
       - '-c'
@@ -184,7 +184,7 @@ options:
         method: 'POST',
         headers,
         body: JSON.stringify({ 
-          message: `🚀 [IGNITION] Digital Twin Sync: v14.1 (AR Verified Deployment)`, 
+          message: `🚀 [IGNITION] Digital Twin Sync: v14.4 (AR Fixed Deployment)`, 
           tree: treeData.sha, 
           parents: [latestCommitSha] 
         })
@@ -210,7 +210,7 @@ options:
         <div className="space-y-1">
           <h3 className="text-sm font-bold text-white uppercase tracking-widest flex items-center gap-2">
             <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
-            Global Uplink v14.1 "Ignition"
+            Global Uplink v14.4 "Ignition"
           </h3>
           <p className="text-[10px] text-slate-500 font-mono uppercase tracking-widest">GCP: motokage | Region: us-central1</p>
         </div>
@@ -227,7 +227,7 @@ options:
            <h4 className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest flex items-center gap-2">
               🚀 Pre-flight Status: GO FOR LAUNCH
            </h4>
-           <span className="text-[8px] font-mono text-slate-600 bg-slate-900 px-2 py-1 rounded">AR_V2_READY</span>
+           <span className="text-[8px] font-mono text-slate-600 bg-slate-900 px-2 py-1 rounded">AR_V4_FIXED</span>
         </div>
         <div className="grid md:grid-cols-2 gap-8 text-[9px] font-mono leading-relaxed">
            <div className="space-y-4">

@@ -101,7 +101,7 @@ const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, accessLevel, s
             </div>
             <div className="flex items-center gap-2">
               <span className={`w-1 h-1 rounded-full animate-pulse ${accessLevel === 'CORE' ? 'bg-purple-500' : 'bg-indigo-500'}`}></span>
-              <span className="text-[7px] font-mono text-slate-500 tracking-widest uppercase">Open Architecture v14.3 • us-central1</span>
+              <span className="text-[7px] font-mono text-slate-500 tracking-widest uppercase">Open Architecture v14.4 • us-central1</span>
             </div>
           </div>
         </div>
