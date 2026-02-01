@@ -6,7 +6,7 @@ const DocumentationView: React.FC = () => {
       {/* Hero Section */}
       <section className="space-y-10 pt-20 border-b border-slate-900 pb-20">
         <div className="inline-flex items-center gap-3 px-4 py-1.5 bg-indigo-500/10 text-indigo-400 text-[10px] font-bold rounded-full border border-indigo-500/20 uppercase tracking-[0.4em]">
-          Blueprint v14.2 • Technical Masterclass
+          Blueprint v14.10 • Technical Masterclass
         </div>
         <h2 className="text-7xl font-bold font-heading text-white tracking-tighter leading-tight max-w-4xl">
           The Recipe: <br/>
@@ -61,10 +61,53 @@ const DocumentationView: React.FC = () => {
         </div>
       </section>
 
-      {/* Pillar 2: Cloud Migration & Timing */}
+      {/* Pillar II: Financial & Infrastructure Topology */}
+      <section className="space-y-12">
+        <div className="flex flex-col md:flex-row justify-between items-start gap-12">
+          <div className="md:w-1/3 space-y-6">
+             <h3 className="text-3xl font-bold text-white font-heading">II. Financial & Infrastructure</h3>
+             <p className="text-slate-400 text-sm leading-relaxed">
+               Maintaining a high-fidelity digital twin requires a professional-grade commitment to AI infrastructure and strategic billing models.
+             </p>
+             <div className="p-6 bg-indigo-500/5 border border-indigo-500/20 rounded-3xl">
+                <p className="text-[10px] font-mono text-indigo-400 uppercase tracking-widest leading-relaxed">
+                  "You don't just 'run' a twin; you sponsor its cognitive continuity through professional-tier services."
+                </p>
+             </div>
+          </div>
+          
+          <div className="md:w-2/3 grid md:grid-cols-2 gap-8">
+            <div className="p-8 bg-slate-900 border border-slate-800 rounded-[2.5rem] space-y-6 group hover:border-blue-500/30 transition-all">
+              <div className="flex justify-between items-center">
+                <h4 className="text-[10px] font-bold text-blue-400 uppercase tracking-widest">Google AI Ultra Layer</h4>
+                <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500 italic">U</div>
+              </div>
+              <ul className="space-y-4 text-[11px] font-mono text-slate-400 uppercase tracking-wider leading-relaxed">
+                <li className="flex gap-2"><span className="text-blue-500">→</span> Highest Quota Tier for Gemini API & Vertex AI Reasoning.</li>
+                <li className="flex gap-2"><span className="text-blue-500">→</span> Exclusive access to Project Mariner (Agentic Browser Plugin).</li>
+                <li className="flex gap-2"><span className="text-blue-500">→</span> Unlocks the 2M Token context window for 'Deep DNA' analysis.</li>
+              </ul>
+            </div>
+
+            <div className="p-8 bg-slate-900 border border-slate-800 rounded-[2.5rem] space-y-6 group hover:border-emerald-500/30 transition-all">
+              <div className="flex justify-between items-center">
+                <h4 className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">Google Cloud (GCP) Node</h4>
+                <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400 italic">C</div>
+              </div>
+              <ul className="space-y-4 text-[11px] font-mono text-slate-400 uppercase tracking-wider leading-relaxed">
+                <li className="flex gap-2"><span className="text-emerald-500">→</span> Pay-as-you-go model for serverless hosting & vector storage.</li>
+                <li className="flex gap-2"><span className="text-emerald-500">→</span> Secure API Key management via Secret Manager for browser tools.</li>
+                <li className="flex gap-2"><span className="text-emerald-500">→</span> Global multi-region availability for low-latency inference.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Pillar 3: Cloud Migration & Timing */}
       <section className="space-y-12 bg-slate-900/40 p-16 rounded-[4rem] border border-slate-800">
         <div className="max-w-4xl space-y-8">
-          <h3 className="text-3xl font-bold text-white font-heading">II. Going Cloud: The Shift to Persistence</h3>
+          <h3 className="text-3xl font-bold text-white font-heading">III. Going Cloud: The Shift to Persistence</h3>
           <p className="text-slate-400 text-sm leading-relaxed">
             The decision to migrate from a local Python prototype to a global, serverless <strong>Google Cloud</strong> deployment was driven by the need for <strong>Identity Persistence</strong>. A digital twin must exist beyond the lifecycle of a local machine to be truly useful. We chose <strong>Cloud Run</strong> for its ability to scale to zero, ensuring we only pay for the cognitive cycles we use.
           </p>
@@ -85,7 +128,7 @@ const DocumentationView: React.FC = () => {
         </div>
       </section>
 
-      {/* Pillar 3: Security & The Thought Partner */}
+      {/* Pillar 4: Security & The Thought Partner */}
       <section className="space-y-12">
         <div className="grid md:grid-cols-2 gap-16 items-start">
           <div className="p-1 bg-gradient-to-br from-orange-500/20 to-indigo-500/20 rounded-[3.5rem]">
@@ -105,7 +148,7 @@ const DocumentationView: React.FC = () => {
              </div>
           </div>
           <div className="space-y-8">
-            <h3 className="text-3xl font-bold text-white font-heading">III. Guardrails & Credits</h3>
+            <h3 className="text-3xl font-bold text-white font-heading">IV. Guardrails & Credits</h3>
             <div className="space-y-6 text-slate-400 text-sm leading-relaxed">
               <p>
                 To protect against NSFW content and computational abuse, we've implemented multi-layered guardrails:
@@ -129,9 +172,9 @@ const DocumentationView: React.FC = () => {
         </div>
       </section>
 
-      {/* Pillar 4: Sensory Ecosystem & Agents */}
+      {/* Pillar 5: Sensory Ecosystem & Agents */}
       <section className="space-y-12">
-         <h3 className="text-3xl font-bold text-white font-heading text-center">IV. The Sensory Nexus</h3>
+         <h3 className="text-3xl font-bold text-white font-heading text-center">V. The Sensory Nexus</h3>
          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             {[
               { name: 'Gmail/Drive', status: 'Live', role: 'Memory Grounding' },

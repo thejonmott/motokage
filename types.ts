@@ -1,4 +1,5 @@
 
+
 export enum TabType {
   STRATEGY = 'STRATEGY',
   DOCUMENTATION = 'DOCUMENTATION',
@@ -67,9 +68,7 @@ export interface Message {
   timestamp: Date;
 }
 
-// Fixed error: All declarations of 'aistudio' must have identical modifiers.
-// Subsequent property declarations must have the same type.
-// The environment requires aistudio to be defined as the AIStudio interface.
+// Interface for AI Studio environment handshake
 export interface AIStudio {
   hasSelectedApiKey: () => Promise<boolean>;
   openSelectKey: () => Promise<void>;
@@ -78,6 +77,14 @@ export interface AIStudio {
 // Global window extension for AI Studio environments
 declare global {
   interface Window {
-    aistudio: AIStudio;
+    /**
+     * aistudio is defined in the host environment, often as an optional property.
+     * Making it optional and using an inline type definition resolves the "identical modifiers" 
+     * and type name collision errors between local and global scopes.
+     */
+    aistudio?: {
+      hasSelectedApiKey: () => Promise<boolean>;
+      openSelectKey: () => Promise<void>;
+    };
   }
 }
