@@ -7,7 +7,7 @@ const DocumentationView: React.FC = () => {
       {/* Hero Section */}
       <section className="space-y-10 pt-20 border-b border-slate-900 pb-20">
         <div className="inline-flex items-center gap-3 px-4 py-1.5 bg-indigo-500/10 text-indigo-400 text-[10px] font-bold rounded-full border border-indigo-500/20 uppercase tracking-[0.4em]">
-          Blueprint v15.3-STABLE • Technical Masterclass
+          Blueprint v15.4-STABLE • Technical Masterclass
         </div>
         <h2 className="text-7xl font-bold font-heading text-white tracking-tighter leading-tight max-w-4xl">
           The Recipe: <br/>

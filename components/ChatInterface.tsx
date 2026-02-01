@@ -46,7 +46,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
 
     try {
       // Initialize a fresh instance to ensure the latest API key from context is used
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
       
       const history = messages.map(m => ({
         role: m.role,
@@ -297,7 +297,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
              <span className="flex items-center gap-1"><span className="w-1 h-1 bg-emerald-500 rounded-full"></span> Tier: PAY-AS-YOU-GO</span>
            </div>
            <div className="text-center md:text-right italic opacity-50">
-             Session ID: {Math.random().toString(36).substring(7).toUpperCase()} • v15.3-STABLE
+             Session ID: {Math.random().toString(36).substring(7).toUpperCase()} • v15.4-STABLE
            </div>
         </div>
 

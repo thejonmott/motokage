@@ -25,7 +25,7 @@ const MemoryVault: React.FC<MemoryVaultProps> = ({ persona, setPersona, accessLe
     setIsSynthesizing(true);
     try {
       // Always initialize with API key from environment for fresh access
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
       const prompt = `Synthesize these artifacts into the MOSAIC of Jonathan Mott.
       Focus on professional strategic artifacts and evidence.
       Content to synthesize: ${content}`;
@@ -64,9 +64,9 @@ const MemoryVault: React.FC<MemoryVaultProps> = ({ persona, setPersona, accessLe
         } 
       });
 
-      // Directly access .text property
-      const jsonStr = response.text.trim();
-      const result = JSON.parse(jsonStr || '{}');
+      // Safely access .text property with optional chaining to prevent build errors
+      const jsonStr = response.text?.trim() || '{}';
+      const result = JSON.parse(jsonStr);
       if (result.newShards) {
         const mapped = result.newShards.map((s: any) => ({ ...s, id: `art_${Date.now()}_${Math.random()}`, active: true }));
         setPersona({ ...persona, memoryShards: [...mapped, ...persona.memoryShards] });

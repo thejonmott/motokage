@@ -1,8 +1,5 @@
 
 
-
-
-
 export enum TabType {
   STRATEGY = 'STRATEGY',
   DOCUMENTATION = 'DOCUMENTATION',
@@ -69,4 +66,17 @@ export interface Message {
   role: 'user' | 'model';
   text: string;
   timestamp: Date;
+}
+
+// Interface for the AI Studio API key management utility provided by the environment
+export interface AIStudio {
+  hasSelectedApiKey: () => Promise<boolean>;
+  openSelectKey: () => Promise<void>;
+}
+
+declare global {
+  interface Window {
+    // Property declaration for aistudio utility with matching AIStudio type and readonly modifier to align with global definitions
+    readonly aistudio: AIStudio;
+  }
 }
