@@ -1,6 +1,5 @@
 steps:
   # 1. Build the container image
-  # We use direct shell conditionals to avoid variable assignments that clash with GCP substitutions.
   - name: 'gcr.io/cloud-builders/docker'
     entrypoint: 'bash'
     args:
@@ -14,7 +13,7 @@ steps:
           docker build -t gcr.io/$PROJECT_ID/motokage-studio:$BRANCH_NAME --build-arg VITE_APP_ENV=production .
         fi
 
-  # 2. Push to Container Registry
+  # 2. Push the image to GCR
   - name: 'gcr.io/cloud-builders/docker'
     args: ['push', 'gcr.io/$PROJECT_ID/motokage-studio:$BRANCH_NAME']
 
