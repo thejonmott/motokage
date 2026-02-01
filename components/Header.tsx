@@ -4,142 +4,123 @@ import { TabType, AccessLevel } from '../types';
 interface HeaderProps {
   activeTab: TabType;
   setActiveTab: (tab: TabType) => void;
-  isSimulationMode: boolean;
-  setIsSimulationMode: (val: boolean) => void;
   accessLevel: AccessLevel;
   setAccessLevel: (level: AccessLevel) => void;
-  isCloudSynced?: boolean;
 }
 
-const NavIcons = {
-  [TabType.ARCHITECTURE]: (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M3 21H21M5 21V7L12 3L19 7V21M9 21V12H15V21" /></svg>
+const Icons = {
+  Architecture: () => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
   ),
-  [TabType.BUILDER]: (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M12 2L12 22M2 12L22 12" strokeDasharray="2 2"/><circle cx="12" cy="12" r="2" fill="currentColor"/></svg>
+  Origin: () => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
   ),
-  [TabType.MEMORY]: (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="12" cy="12" r="9"/><path d="M12 7V12L15 15"/></svg>
+  Mosaic: () => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
   ),
-  [TabType.NEXUS]: (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="12" cy="12" r="5"/><path d="M12 2V7M12 17V22M2 12H7M17 12H22"/></svg>
+  DNA: () => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="m8 8 8 8"/><path d="m16 8-8 8"/><path d="M12 2v4"/><path d="M12 18v4"/><path d="M4.93 4.93l2.83 2.83"/><path d="M16.24 16.24l2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="M4.93 19.07l2.83-2.83"/><path d="M16.24 7.76l2.83-2.83"/></svg>
   ),
-  [TabType.CHAT]: (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M21 12C21 16.9706 16.9706 21 12 21C10.2443 21 8.61483 20.496 7.23438 19.6267L3 21L4.37333 16.7656C3.50401 15.3852 3 13.7557 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z"/></svg>
+  Mandates: () => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
   ),
-  [TabType.STAGING]: (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10 20L4 12L10 4M14 4L20 12L14 20M8 12H16" strokeDasharray="3 3"/></svg>
+  Self: () => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+  ),
+  Dashboard: () => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/><path d="M3 9h18"/></svg>
   )
 };
 
-const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, isSimulationMode, setIsSimulationMode, accessLevel, setAccessLevel, isCloudSynced }) => {
-  const [showKeyPrompt, setShowKeyPrompt] = useState(false);
-  const [dnaKey, setDnaKey] = useState('');
+const TabConfig = {
+  [TabType.STRATEGY]: { label: 'Architecture', icon: <Icons.Architecture /> },
+  [TabType.ORIGIN]: { label: 'Origin Story', icon: <Icons.Origin /> },
+  [TabType.MOSAIC]: { label: 'Mosaic', icon: <Icons.Mosaic /> },
+  [TabType.DNA]: { label: 'DNA', icon: <Icons.DNA /> },
+  [TabType.MANDATES]: { label: 'Mandates', icon: <Icons.Mandates /> },
+  [TabType.SELF]: { label: 'The Self (BETA)', icon: <Icons.Self /> },
+  [TabType.DASHBOARD]: { label: 'Studio Dashboard', icon: <Icons.Dashboard /> },
+};
 
-  const tabs = [
-    { id: TabType.ARCHITECTURE, label: 'Strategy' },
-    { id: TabType.BUILDER, label: 'DNA' },
-    { id: TabType.MEMORY, label: 'Memory' },
-    { id: TabType.NEXUS, label: 'Nexus' },
-    { id: TabType.CHAT, label: 'Sync Lab' },
-    { id: TabType.STAGING, label: 'Staging' },
-  ];
+const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, accessLevel, setAccessLevel }) => {
+  const [showLogin, setShowLogin] = useState(false);
+  const [pass, setPass] = useState('');
 
-  const handleLevelToggle = () => {
-    if (accessLevel === 'AMBASSADOR') {
-      setShowKeyPrompt(true);
-    } else {
-      setAccessLevel('AMBASSADOR');
-    }
-  };
+  const publicTabs = [TabType.STRATEGY, TabType.ORIGIN, TabType.MOSAIC, TabType.SELF];
+  const coreTabs = [TabType.DNA, TabType.MANDATES, TabType.DASHBOARD];
 
-  const unlockCore = (e: React.FormEvent) => {
+  const currentTabs = accessLevel === 'CORE' ? [...publicTabs, ...coreTabs] : publicTabs;
+
+  const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (dnaKey === 'shadow_mesh_alpha') {
+    if (pass === 'shadow_mesh_alpha') {
       setAccessLevel('CORE');
-      setShowKeyPrompt(false);
-      setDnaKey('');
+      setShowLogin(false);
+      setPass('');
     } else {
-      alert('INVALID DNA KEY');
+      alert('INVALID ACCESS KEY');
     }
   };
 
   return (
-    <header className={`sticky top-0 z-50 backdrop-blur-md border-b px-6 py-4 transition-all duration-500 ${accessLevel === 'CORE' ? 'bg-purple-950/20 border-purple-500/20 shadow-[0_0_30px_rgba(168,85,247,0.1)]' : 'bg-slate-950/80 border-slate-900'}`}>
-      <div className="container mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+    <header className={`sticky top-0 z-50 border-b px-8 py-4 transition-all duration-500 ${accessLevel === 'CORE' ? 'bg-slate-900 border-purple-500/20' : 'bg-slate-950/80 backdrop-blur-xl border-slate-900'}`}>
+      <div className="container mx-auto flex items-center justify-between gap-6">
         <div className="flex items-center gap-4">
-          <div className={`w-10 h-10 border rounded-xl flex items-center justify-center shadow-2xl relative group overflow-hidden transition-all ${accessLevel === 'CORE' ? 'bg-purple-900/40 border-purple-500/50 rotate-12' : 'bg-slate-900 border-slate-800'}`}>
-            <span className={`text-xl font-bold font-heading ${accessLevel === 'CORE' ? 'text-purple-400' : 'text-white'}`}>影</span>
-          </div>
-          <div className="flex flex-col">
-            <h1 className="text-xl font-bold font-heading tracking-tight text-white leading-tight">
-              Motokage <span className={`${accessLevel === 'CORE' ? 'text-purple-400' : 'text-indigo-400'} font-light italic`}>Studio</span>
-            </h1>
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xl shadow-lg transition-all ${accessLevel === 'CORE' ? 'bg-purple-600 shadow-purple-500/20 rotate-3' : 'bg-indigo-600 shadow-indigo-500/20'}`}>影</div>
+          <div>
+            <div className="font-heading font-bold text-lg text-white tracking-tight">
+              {accessLevel === 'CORE' ? (
+                <span>Motokage <span className="text-purple-400 italic font-light">Studio</span></span>
+              ) : (
+                <span>MOTOKAGE <span className="text-slate-500 font-light mx-1">|</span> <span className="text-indigo-400">Jon Mott's Digital Twin <span className="text-[10px] text-slate-500 align-top ml-1">BETA</span></span></span>
+              )}
+            </div>
             <div className="flex items-center gap-2">
-              <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${isCloudSynced ? 'bg-green-500' : (accessLevel === 'CORE' ? 'bg-purple-500' : 'bg-indigo-500')}`}></span>
-              <span className="text-[8px] text-slate-500 font-mono tracking-widest uppercase">
-                {isCloudSynced ? 'CLOUD_DNA_HYDRATED' : (accessLevel === 'CORE' ? 'ENCLAVE CORE_V7_SYNC' : 'IDENTITY MESH ONLINE')}
-              </span>
+              <span className={`w-1 h-1 rounded-full animate-pulse ${accessLevel === 'CORE' ? 'bg-purple-500' : 'bg-indigo-500'}`}></span>
+              <span className="text-[7px] font-mono text-slate-500 tracking-widest uppercase">{accessLevel} SYSTEM ACTIVE</span>
             </div>
           </div>
         </div>
 
-        <nav className="flex bg-slate-950 p-1 rounded-2xl border border-slate-900 shadow-inner overflow-x-auto no-scrollbar max-w-full">
-          {tabs.map((tab) => (
+        <nav className="flex items-center gap-1 bg-slate-900/50 p-1 rounded-2xl border border-slate-800">
+          {currentTabs.map((tab) => (
             <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`px-5 py-2.5 rounded-xl transition-all flex items-center gap-3 text-[10px] font-bold uppercase tracking-[0.2em] whitespace-nowrap
-                ${activeTab === tab.id 
-                  ? 'bg-slate-900 text-white shadow-xl border border-slate-800' 
-                  : 'text-slate-600 hover:text-slate-300'}`}
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`px-4 py-2 rounded-xl text-[9px] font-bold uppercase tracking-widest transition-all flex items-center gap-2.5
+                ${activeTab === tab ? (accessLevel === 'CORE' ? 'bg-purple-600/20 text-white shadow-lg border border-purple-500/30' : 'bg-slate-800 text-white shadow-lg') : 'text-slate-500 hover:text-slate-300'}`}
             >
-              <span className={activeTab === tab.id ? (accessLevel === 'CORE' ? 'text-purple-400' : 'text-indigo-400') : 'text-slate-700'}>
-                {NavIcons[tab.id]}
+              <span className={`${activeTab === tab ? (accessLevel === 'CORE' ? 'text-purple-400' : 'text-indigo-400') : 'text-slate-500'}`}>
+                {TabConfig[tab].icon}
               </span>
-              <span className="hidden lg:inline">{tab.label}</span>
+              <span className="hidden md:inline">{TabConfig[tab].label}</span>
             </button>
           ))}
         </nav>
 
-        <div className="flex items-center gap-3 bg-slate-950/50 p-1 rounded-xl border border-slate-900">
-           {isCloudSynced && (
-             <div className="px-2 py-1 bg-green-500/10 border border-green-500/20 rounded text-[7px] font-bold text-green-400 uppercase tracking-widest">
-               Synced
-             </div>
-           )}
-           <button 
-             onClick={handleLevelToggle}
-             className={`px-3 py-2 rounded-lg text-[8px] font-bold uppercase tracking-widest border transition-all flex items-center gap-2 ${accessLevel === 'CORE' ? 'bg-purple-600/20 border-purple-500 text-purple-400' : 'bg-slate-900 border-slate-800 text-slate-600'}`}
-           >
-             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-             {accessLevel}
-           </button>
-
-           <button 
-             onClick={() => setIsSimulationMode(!isSimulationMode)}
-             className={`p-2.5 rounded-lg border bg-slate-900 border-slate-800 text-slate-600 hover:text-white transition-all`}
-           >
-             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><path d="M12 18h.01"/></svg>
-           </button>
-        </div>
+        <button 
+          onClick={() => accessLevel === 'CORE' ? setAccessLevel('AMBASSADOR') : setShowLogin(true)}
+          className={`px-4 py-2 rounded-xl text-[9px] font-bold uppercase tracking-widest border transition-all
+            ${accessLevel === 'CORE' ? 'border-purple-500 text-purple-400 bg-purple-500/10' : 'border-slate-800 text-slate-500 bg-slate-900'}`}
+        >
+          {accessLevel === 'CORE' ? 'Exit Studio' : 'Studio Login'}
+        </button>
       </div>
 
-      {showKeyPrompt && (
-        <div className="absolute top-20 right-6 w-80 bg-slate-900 border border-slate-800 p-6 rounded-3xl shadow-2xl animate-in slide-in-from-top-4">
-           <form onSubmit={unlockCore} className="space-y-4">
-              <h4 className="text-[10px] font-bold text-white uppercase tracking-widest">Enter DNA Key</h4>
-              <input 
-                type="password" 
-                value={dnaKey}
-                onChange={(e) => setDnaKey(e.target.value)}
-                autoFocus
-                placeholder="Identity Passcode..."
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-xs text-white outline-none focus:border-purple-500 transition-all"
-              />
-              <button type="submit" className="w-full bg-purple-600 text-white py-3 rounded-xl text-[9px] font-bold uppercase tracking-widest shadow-xl">Unlock Enclave</button>
-              <button type="button" onClick={() => setShowKeyPrompt(false)} className="w-full text-[8px] text-slate-600 uppercase tracking-widest">Cancel</button>
-           </form>
+      {showLogin && (
+        <div className="absolute top-24 right-8 w-72 bg-slate-900 border border-slate-800 p-6 rounded-3xl shadow-2xl z-[100] animate-in slide-in-from-top-4">
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center">Identity Handshake</div>
+            <input 
+              type="password" 
+              value={pass} 
+              onChange={e => setPass(e.target.value)} 
+              autoFocus
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-indigo-500"
+              placeholder="ENTER PASSCODE"
+            />
+            <button type="submit" className="w-full bg-indigo-600 py-3 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-indigo-500 transition-colors">Verify</button>
+          </form>
         </div>
       )}
     </header>

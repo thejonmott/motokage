@@ -1,5 +1,7 @@
+
 import React, { useState, useEffect } from 'react';
-import { Persona, CloudSource } from '../types';
+// Fixed error: Module '"../types"' has no exported member 'CloudSource'.
+import { Persona } from '../types';
 import ShadowSyncConsole from './ShadowSyncConsole';
 
 interface NexusViewProps {
@@ -142,7 +144,7 @@ const NexusView: React.FC<NexusViewProps> = ({ persona, setPersona }) => {
   };
 
   return (
-    <div className="animate-in fade-in duration-700 space-y-12 pb-24 max-w-7xl mx-auto px-4 md:px-8">
+    <div className="animate-in fade-in duration-1000 space-y-12 pb-24 max-w-7xl mx-auto px-4 md:px-8">
       <section className="text-center space-y-4 max-w-4xl mx-auto pt-8">
         <div className="inline-flex items-center gap-3 px-4 py-1.5 bg-cyan-500/10 text-cyan-400 text-[9px] font-bold rounded-full border border-cyan-500/20 uppercase tracking-[0.4em] mb-2">
           <span className="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-pulse"></span>

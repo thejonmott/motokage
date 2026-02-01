@@ -1,15 +1,14 @@
-
 export enum TabType {
-  ARCHITECTURE = 'ARCHITECTURE',
-  BUILDER = 'BUILDER',
-  MEMORY = 'MEMORY',
-  NEXUS = 'NEXUS',
-  CHAT = 'CHAT',
-  STAGING = 'STAGING'
+  STRATEGY = 'STRATEGY',
+  ORIGIN = 'ORIGIN',
+  MOSAIC = 'MOSAIC',
+  DNA = 'DNA',
+  MANDATES = 'MANDATES',
+  SELF = 'SELF',
+  DASHBOARD = 'DASHBOARD'
 }
 
 export type MemoryCategory = 'axiom' | 'chronos' | 'echo' | 'logos' | 'ethos';
-export type NeuralCoreType = 'local' | 'vector_mesh';
 export type SensitivityLevel = 'PRIVATE' | 'PUBLIC';
 export type AccessLevel = 'CORE' | 'AMBASSADOR';
 
@@ -20,17 +19,31 @@ export interface MemoryShard {
   content: string;
   active: boolean;
   sensitivity: SensitivityLevel;
-  lastSynced?: Date;
-  vectorId?: string;
 }
 
-export interface CloudSource {
+export interface Agent {
   id: string;
-  accountEmail: string;
-  provider: 'drive' | 'dropbox' | 'notion' | 'github' | 'linkedin' | 'gmail' | 'calendar';
-  status: 'connected' | 'disconnected' | 'syncing';
-  linkedFolders: string[];
-  lastSynced: Date;
+  name: string;
+  role: string;
+  sensors: string[];
+  tools: string[];
+  status: 'idle' | 'executing' | 'waiting';
+}
+
+export interface Mandate {
+  id: string;
+  title: string;
+  objective: string;
+  priority: 'CRITICAL' | 'STRATEGIC' | 'OPERATIONAL';
+  status: 'active' | 'pending' | 'completed';
+  agents: Agent[];
+}
+
+export interface OriginFact {
+  id: string;
+  year: string;
+  event: string;
+  significance: string;
 }
 
 export interface Persona {
@@ -39,15 +52,10 @@ export interface Persona {
   tone: string;
   coreValues: string[];
   bio: string;
-  knowledgeBase: string;
-  ragSource: string;
-  agentLogic: string;
+  reasoningLogic: string;
   memoryShards: MemoryShard[];
-  voiceSignature: string;
-  cloudSources: CloudSource[];
-  targetComplexity: number;
-  neuralCoreType: NeuralCoreType;
-  vectorEnabled: boolean;
+  mandates: Mandate[];
+  originFacts: OriginFact[];
   accessLevel: AccessLevel;
 }
 
@@ -55,13 +63,4 @@ export interface Message {
   role: 'user' | 'model';
   text: string;
   timestamp: Date;
-  groundingSource?: string;
-  nexusSources?: string[];
-  isPrivate?: boolean;
-}
-
-export interface CloudSyncStatus {
-  lastUplink?: Date;
-  repoUrl?: string;
-  isHosted: boolean;
 }

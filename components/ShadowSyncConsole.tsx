@@ -58,7 +58,7 @@ const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona }) => {
       const allFiles = [...sourceFiles, ...Object.keys(manifests)];
       
       const refRes = await fetch(`https://api.github.com/repos/${repo}/git/refs/heads/main`, { headers });
-      if (!refRes.ok) throw new Error("Could not find 'main' branch. Ensure repo exists and is initialized.");
+      if (!refRes.ok) throw new Error("Branch 'main' not found. Ensure repo is initialized.");
       const refData = await refRes.json();
       const latestCommitSha = refData.object.sha;
 
@@ -93,7 +93,7 @@ const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona }) => {
       const commitRes = await fetch(`https://api.github.com/repos/${repo}/git/commits`, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ message: `Atomic Sync: ${new Date().toISOString()}`, tree: treeData.sha, parents: [latestCommitSha] })
+        body: JSON.stringify({ message: `Global Identity Sync: ${new Date().toISOString()}`, tree: treeData.sha, parents: [latestCommitSha] })
       });
       const commitData = await commitRes.json();
 
@@ -104,55 +104,68 @@ const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona }) => {
       });
 
       setProgress(100);
-      setStatus({ type: 'success', msg: 'Atomic Uplink Successful. Single build triggered.' });
+      setStatus({ type: 'success', msg: 'Global Sync Complete. Persistent DNA Updated.' });
     } catch (e: any) {
       setStatus({ type: 'error', msg: e.message });
     }
   };
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-[3rem] p-10 shadow-2xl space-y-8">
-      <div className="flex justify-between items-center border-b border-slate-800 pb-6">
-        <div>
-          <h3 className="text-sm font-bold text-white uppercase tracking-widest">Cloud Uplink v3.1</h3>
-          <p className="text-[10px] text-slate-500 font-mono uppercase mt-1">Atomic Commit Protocol (Single-Trigger)</p>
+    <div className="bg-slate-900 border border-slate-800 rounded-[3rem] p-12 shadow-2xl space-y-10">
+      <div className="flex justify-between items-center border-b border-slate-800 pb-8">
+        <div className="space-y-1">
+          <h3 className="text-sm font-bold text-white uppercase tracking-widest">Global Uplink v4.0</h3>
+          <p className="text-[10px] text-slate-500 font-mono uppercase">Single-Source DNA Synchronizer</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4">
           <a 
             href="https://console.cloud.google.com/run" 
             target="_blank" 
             rel="noopener noreferrer"
-            className="px-3 py-1.5 bg-slate-950 border border-slate-800 rounded-lg text-[8px] font-bold text-indigo-400 uppercase tracking-widest hover:border-indigo-500/50 transition-all flex items-center gap-2"
+            className="px-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-[9px] font-bold text-indigo-400 uppercase tracking-widest hover:border-indigo-500/50 transition-all flex items-center gap-2"
           >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/></svg>
-            GCP Console
+            Cloud Dashboard
           </a>
           <div className={`w-2 h-2 rounded-full ${status.type === 'loading' ? 'bg-blue-500 animate-pulse' : 'bg-green-500'}`}></div>
-          <span className="text-[9px] font-mono text-slate-500 uppercase">Uplink_Online</span>
         </div>
       </div>
-      <div className="grid md:grid-cols-2 gap-6">
+      
+      <div className="grid md:grid-cols-2 gap-8">
         <div className="space-y-4">
-          <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Repository</label>
-          <input type="text" value={repo} onChange={(e) => setRepo(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-5 py-4 text-xs text-white outline-none focus:border-blue-500 transition-all" />
+          <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">GitHub Repository (Target DNA)</label>
+          <input type="text" value={repo} onChange={(e) => setRepo(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-6 py-4 text-xs text-white outline-none focus:border-indigo-500 transition-all font-mono" />
         </div>
         <div className="space-y-4">
-          <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Access Token</label>
-          <input type="password" value={token} onChange={(e) => setToken(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-5 py-4 text-xs text-white outline-none focus:border-blue-500 transition-all" />
+          <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Global Access Token</label>
+          <input type="password" value={token} onChange={(e) => setToken(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-6 py-4 text-xs text-white outline-none focus:border-indigo-500 transition-all font-mono" />
         </div>
       </div>
-      <div className="space-y-6">
-        <button onClick={handleAtomicSync} disabled={status.type === 'loading'} className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white py-5 rounded-2xl font-bold text-[10px] uppercase tracking-[0.3em] transition-all shadow-xl">
-          {status.type === 'loading' ? 'Executing Atomic Commit...' : 'Initialize Atomic Deploy'}
+
+      <div className="p-8 bg-slate-950 border border-slate-800 rounded-3xl space-y-4">
+         <h4 className="text-[9px] font-bold text-white uppercase tracking-widest flex items-center gap-2">
+           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+           Security Notice
+         </h4>
+         <p className="text-[10px] text-slate-500 font-mono leading-relaxed uppercase tracking-wider">
+           Syncing will overwrite the remote <span className="text-white">shadow_config.json</span>. This becomes the permanent identity source for all hydrated sessions globally. Ensure current local DNA is verified before uplink.
+         </p>
+      </div>
+
+      <div className="space-y-8">
+        <button onClick={handleAtomicSync} disabled={status.type === 'loading'} className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white py-6 rounded-3xl font-bold text-[11px] uppercase tracking-[0.4em] transition-all shadow-2xl relative overflow-hidden group">
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+          {status.type === 'loading' ? 'Encrypting & Transmitting DNA...' : 'Perform Global Identity Sync'}
         </button>
         {status.type === 'loading' && (
-          <div className="space-y-3">
-            <div className="h-1.5 w-full bg-slate-950 rounded-full overflow-hidden"><div className="h-full bg-blue-500 transition-all duration-300" style={{ width: `${progress}%` }}></div></div>
-            <p className="text-[8px] text-slate-500 font-mono text-center uppercase tracking-widest">Processing: <span className="text-white">{currentFile}</span></p>
+          <div className="space-y-4">
+            <div className="h-2 w-full bg-slate-950 rounded-full overflow-hidden border border-slate-800">
+               <div className="h-full bg-indigo-500 transition-all duration-300 shadow-[0_0_20px_rgba(79,70,229,0.5)]" style={{ width: `${progress}%` }}></div>
+            </div>
+            <p className="text-[8px] text-slate-500 font-mono text-center uppercase tracking-widest">DNA_PACKET: <span className="text-white">{currentFile}</span></p>
           </div>
         )}
         {status.msg && (
-          <div className={`p-5 rounded-2xl text-[10px] font-mono text-center uppercase tracking-widest border ${status.type === 'error' ? 'bg-red-500/10 border-red-500/20 text-red-400' : 'bg-green-500/10 border-green-500/20 text-green-400'}`}>
+          <div className={`p-6 rounded-2xl text-[10px] font-mono text-center uppercase tracking-widest border animate-in fade-in slide-in-from-top-2 ${status.type === 'error' ? 'bg-red-500/10 border-red-500/20 text-red-400' : 'bg-green-500/10 border-green-500/20 text-green-400'}`}>
             {status.msg}
           </div>
         )}
