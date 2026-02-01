@@ -50,11 +50,16 @@ const App: React.FC = () => {
   // API Key Selection Handshake
   useEffect(() => {
     const checkKey = async () => {
-      if (window.aistudio?.hasSelectedApiKey) {
-        const selected = await window.aistudio.hasSelectedApiKey();
-        setHasKey(selected);
-      } else {
-        // Fallback for environments where selecting a key isn't required but process.env is provided
+      try {
+        if (window.aistudio && typeof window.aistudio.hasSelectedApiKey === 'function') {
+          const selected = await window.aistudio.hasSelectedApiKey();
+          setHasKey(selected);
+        } else {
+          // Fallback for environments where selecting a key isn't required (dev/local)
+          setHasKey(!!process.env.API_KEY);
+        }
+      } catch (err) {
+        console.warn("Key status check failed:", err);
         setHasKey(!!process.env.API_KEY);
       }
     };
@@ -62,10 +67,14 @@ const App: React.FC = () => {
   }, []);
 
   const handleOpenKeyPicker = async () => {
-    if (window.aistudio?.openSelectKey) {
-      await window.aistudio.openSelectKey();
-      // Assume success per instructions and proceed
-      setHasKey(true);
+    try {
+      if (window.aistudio && typeof window.aistudio.openSelectKey === 'function') {
+        await window.aistudio.openSelectKey();
+        // Trigger successful state per instructions
+        setHasKey(true);
+      }
+    } catch (err) {
+      console.error("Failed to open key picker:", err);
     }
   };
 
@@ -114,7 +123,7 @@ const App: React.FC = () => {
       </main>
 
       <footer className="py-12 border-t border-slate-900 text-center text-slate-600 text-[9px] font-mono uppercase tracking-[0.3em]">
-        © 2026 Motokage • Open Architecture v14.6 • {accessLevel} MODE
+        © 2026 Motokage • Open Architecture v14.7 • {accessLevel} MODE
       </footer>
     </div>
   );

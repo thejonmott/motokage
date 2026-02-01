@@ -1,3 +1,4 @@
+
 export enum TabType {
   STRATEGY = 'STRATEGY',
   DOCUMENTATION = 'DOCUMENTATION',
@@ -64,4 +65,19 @@ export interface Message {
   role: 'user' | 'model';
   text: string;
   timestamp: Date;
+}
+
+// Fixed error: All declarations of 'aistudio' must have identical modifiers.
+// Subsequent property declarations must have the same type.
+// The environment requires aistudio to be defined as the AIStudio interface.
+export interface AIStudio {
+  hasSelectedApiKey: () => Promise<boolean>;
+  openSelectKey: () => Promise<void>;
+}
+
+// Global window extension for AI Studio environments
+declare global {
+  interface Window {
+    aistudio: AIStudio;
+  }
 }
