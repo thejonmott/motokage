@@ -45,7 +45,22 @@ const TabConfig = {
 const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, accessLevel, setAccessLevel }) => {
   const [showLogin, setShowLogin] = useState(false);
   const [pass, setPass] = useState('');
+  
+  // Robust detection of environment variables.
+  // We use a safe fallback mechanism to prevent runtime TypeError during boot.
+  const getAppEnv = (): string => {
+    try {
+      const meta = import.meta as any;
+      if (typeof meta !== 'undefined' && meta.env && meta.env.VITE_APP_ENV) {
+        return meta.env.VITE_APP_ENV;
+      }
+    } catch (e) {
+      // Return 'production' if import.meta.env is inaccessible
+    }
+    return 'production';
+  };
 
+  const appEnv = getAppEnv();
   const publicTabs = [TabType.STRATEGY, TabType.ORIGIN, TabType.MOSAIC, TabType.SELF];
   const coreTabs = [TabType.DNA, TabType.MANDATES, TabType.DASHBOARD];
 
@@ -68,16 +83,21 @@ const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, accessLevel, s
         <div className="flex items-center gap-4">
           <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xl shadow-lg transition-all ${accessLevel === 'CORE' ? 'bg-purple-600 shadow-purple-500/20 rotate-3' : 'bg-indigo-600 shadow-indigo-500/20'}`}>影</div>
           <div>
-            <div className="font-heading font-bold text-lg text-white tracking-tight">
-              {accessLevel === 'CORE' ? (
-                <span>Motokage <span className="text-purple-400 italic font-light">Studio</span></span>
-              ) : (
-                <span>MOTOKAGE <span className="text-slate-500 font-light mx-1">|</span> <span className="text-indigo-400">Jon Mott's Digital Twin <span className="text-[10px] text-slate-500 align-top ml-1">BETA</span></span></span>
+            <div className="flex items-center gap-3">
+              <div className="font-heading font-bold text-lg text-white tracking-tight">
+                {accessLevel === 'CORE' ? (
+                  <span>Motokage <span className="text-purple-400 italic font-light">Studio</span></span>
+                ) : (
+                  <span>MOTOKAGE <span className="text-slate-500 font-light mx-1">|</span> <span className="text-indigo-400">Jon Mott's Digital Twin <span className="text-[10px] text-slate-500 align-top ml-1">BETA</span></span></span>
+                )}
+              </div>
+              {appEnv === 'staging' && (
+                <span className="px-2 py-0.5 bg-amber-500/10 border border-amber-500/30 text-amber-500 text-[8px] font-bold uppercase tracking-widest rounded">Calibration</span>
               )}
             </div>
             <div className="flex items-center gap-2">
               <span className={`w-1 h-1 rounded-full animate-pulse ${accessLevel === 'CORE' ? 'bg-purple-500' : 'bg-indigo-500'}`}></span>
-              <span className="text-[7px] font-mono text-slate-500 tracking-widest uppercase">{accessLevel} SYSTEM ACTIVE</span>
+              <span className="text-[7px] font-mono text-slate-500 tracking-widest uppercase">{accessLevel} SYSTEM ACTIVE • {appEnv.toUpperCase()}</span>
             </div>
           </div>
         </div>
