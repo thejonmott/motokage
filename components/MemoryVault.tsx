@@ -1,6 +1,7 @@
+
 import React, { useState } from 'react';
 import { Persona, AccessLevel } from '../types';
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenAI, Type } from '@google/genai';
 
 interface MemoryVaultProps {
   persona: Persona;
@@ -23,17 +24,59 @@ const MemoryVault: React.FC<MemoryVaultProps> = ({ persona, setPersona, accessLe
     if (accessLevel !== 'CORE') return;
     setIsSynthesizing(true);
     try {
+      // Always initialize with API key from environment for fresh access
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       const prompt = `Synthesize these artifacts into the MOSAIC of Jonathan Mott.
-      Return JSON: { "newShards": [{"title": "string", "category": "axiom|chronos|echo|logos|ethos", "content": "string", "sensitivity": "PRIVATE"}] }`;
-      const response = await ai.models.generateContent({ model: 'gemini-3-flash-preview', contents: prompt, config: { responseMimeType: 'application/json' } });
-      const result = JSON.parse(response.text || '{}');
+      Focus on professional strategic artifacts and evidence.
+      Content to synthesize: ${content}`;
+      
+      const response = await ai.models.generateContent({ 
+        model: 'gemini-3-flash-preview', 
+        contents: prompt, 
+        config: { 
+          responseMimeType: 'application/json',
+          // Use responseSchema for robust JSON output as per best practices
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              newShards: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    title: { type: Type.STRING },
+                    category: { 
+                      type: Type.STRING,
+                      description: 'One of: axiom, chronos, echo, logos, ethos'
+                    },
+                    content: { type: Type.STRING },
+                    sensitivity: { 
+                      type: Type.STRING,
+                      description: 'Either PRIVATE or PUBLIC'
+                    }
+                  },
+                  required: ['title', 'category', 'content', 'sensitivity']
+                }
+              }
+            },
+            required: ['newShards']
+          }
+        } 
+      });
+
+      // Directly access .text property
+      const jsonStr = response.text.trim();
+      const result = JSON.parse(jsonStr || '{}');
       if (result.newShards) {
         const mapped = result.newShards.map((s: any) => ({ ...s, id: `art_${Date.now()}_${Math.random()}`, active: true }));
         setPersona({ ...persona, memoryShards: [...mapped, ...persona.memoryShards] });
       }
       setIsIngestMode(false);
-    } catch (e) { console.error(e); } finally { setIsSynthesizing(false); }
+    } catch (e) { 
+      console.error(e); 
+    } finally { 
+      setIsSynthesizing(false); 
+    }
   };
 
   return (

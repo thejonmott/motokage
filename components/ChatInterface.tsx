@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Persona, Message, AccessLevel } from '../types';
 import { GoogleGenAI, GenerateContentResponse } from '@google/genai';
@@ -31,6 +32,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
   ];
 
   const handleSend = async (query: string) => {
+    // Only proceed if we have a key (via env var or manual selection)
     if (!query.trim() || isLoading || !hasKey) return;
 
     const currentInput = query;
@@ -43,7 +45,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
     setActiveSubLog('Accessing DNA Memory...');
 
     try {
-      // Always create a fresh instance per requirements for key updates
+      // Initialize a fresh instance to ensure the latest API key from context is used
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       
       const history = messages.map(m => ({
@@ -94,8 +96,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
     } catch (error: any) {
       console.error("Cognitive Uplink Failure:", error);
       
+      // Handle the case where the key is invalid or permissions were revoked
       if (error.message?.includes("Requested entity was not found") || error.message?.includes("403")) {
-        // This usually indicates a billing/tier issue in AI Studio
         setActiveSubLog('Identity Sync Error. Resetting protocol...');
         onResetKey();
       }
@@ -111,6 +113,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
     }
   };
 
+  // The Handshake screen is the landing for users without an active key/uplink
   if (!hasKey) {
     return (
       <div className="flex flex-col items-center justify-center h-[70vh] max-w-2xl mx-auto text-center space-y-10 animate-in fade-in zoom-in-95 duration-700">
@@ -147,7 +150,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
                rel="noreferrer" 
                className="text-[9px] text-slate-600 uppercase tracking-widest hover:text-indigo-400 transition-colors flex items-center gap-2"
              >
-               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/></svg>
+               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2 2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/></svg>
                Billing Documentation
              </a>
              <a 
@@ -294,7 +297,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
              <span className="flex items-center gap-1"><span className="w-1 h-1 bg-emerald-500 rounded-full"></span> Tier: PAY-AS-YOU-GO</span>
            </div>
            <div className="text-center md:text-right italic opacity-50">
-             Session ID: {Math.random().toString(36).substring(7).toUpperCase()} • v14.9
+             Session ID: {Math.random().toString(36).substring(7).toUpperCase()} • v15.3-STABLE
            </div>
         </div>
 

@@ -1,5 +1,8 @@
 
 
+
+
+
 export enum TabType {
   STRATEGY = 'STRATEGY',
   DOCUMENTATION = 'DOCUMENTATION',
@@ -66,25 +69,4 @@ export interface Message {
   role: 'user' | 'model';
   text: string;
   timestamp: Date;
-}
-
-// Interface for AI Studio environment handshake
-export interface AIStudio {
-  hasSelectedApiKey: () => Promise<boolean>;
-  openSelectKey: () => Promise<void>;
-}
-
-// Global window extension for AI Studio environments
-declare global {
-  interface Window {
-    /**
-     * aistudio is defined in the host environment, often as an optional property.
-     * Making it optional and using an inline type definition resolves the "identical modifiers" 
-     * and type name collision errors between local and global scopes.
-     */
-    aistudio?: {
-      hasSelectedApiKey: () => Promise<boolean>;
-      openSelectKey: () => Promise<void>;
-    };
-  }
 }

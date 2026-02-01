@@ -1,3 +1,4 @@
+
 import React from 'react';
 
 const DocumentationView: React.FC = () => {
@@ -6,7 +7,7 @@ const DocumentationView: React.FC = () => {
       {/* Hero Section */}
       <section className="space-y-10 pt-20 border-b border-slate-900 pb-20">
         <div className="inline-flex items-center gap-3 px-4 py-1.5 bg-indigo-500/10 text-indigo-400 text-[10px] font-bold rounded-full border border-indigo-500/20 uppercase tracking-[0.4em]">
-          Blueprint v14.10 • Technical Masterclass
+          Blueprint v15.3-STABLE • Technical Masterclass
         </div>
         <h2 className="text-7xl font-bold font-heading text-white tracking-tighter leading-tight max-w-4xl">
           The Recipe: <br/>
@@ -17,11 +18,66 @@ const DocumentationView: React.FC = () => {
         </p>
       </section>
 
-      {/* Pillar 1: Public Ambassador vs. Private Studio */}
+      {/* Pillar I: Professional Infrastructure */}
+      <section className="space-y-12">
+        <div className="flex flex-col md:flex-row justify-between items-start gap-12">
+          <div className="md:w-1/3 space-y-6">
+             <h3 className="text-3xl font-bold text-white font-heading">I. Professional Infrastructure</h3>
+             <p className="text-slate-400 text-sm leading-relaxed">
+               Maintaining a high-fidelity digital twin requires a professional-grade commitment to AI infrastructure and strategic billing models.
+             </p>
+             <div className="p-6 bg-indigo-500/5 border border-indigo-500/20 rounded-3xl">
+                <p className="text-[10px] font-mono text-indigo-400 uppercase tracking-widest leading-relaxed">
+                  "The twin is only as powerful as the infrastructure that fuels it. We leverage the highest professional tiers for cognitive continuity."
+                </p>
+             </div>
+          </div>
+          
+          <div className="md:w-2/3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {/* Google AI Ultra Card */}
+            <div className="p-6 bg-slate-900 border border-slate-800 rounded-[2.5rem] space-y-4 group hover:border-blue-500/30 transition-all">
+              <div className="flex justify-between items-center">
+                <h4 className="text-[9px] font-bold text-blue-400 uppercase tracking-widest">Google AI Ultra</h4>
+                <div className="w-6 h-6 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500 text-[10px] italic">U</div>
+              </div>
+              <ul className="space-y-3 text-[10px] font-mono text-slate-400 uppercase tracking-wider leading-relaxed">
+                <li className="flex gap-2"><span className="text-blue-500">→</span> Reasoning quota.</li>
+                <li className="flex gap-2"><span className="text-blue-500">→</span> Project Mariner access.</li>
+              </ul>
+            </div>
+
+            {/* Google Cloud Card (with Secret Manager info) */}
+            <div className="p-6 bg-slate-900 border border-slate-800 rounded-[2.5rem] space-y-4 group hover:border-emerald-500/30 transition-all">
+              <div className="flex justify-between items-center">
+                <h4 className="text-[9px] font-bold text-emerald-400 uppercase tracking-widest">Secret Manager</h4>
+                <div className="w-6 h-6 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400 text-[10px] italic">S</div>
+              </div>
+              <ul className="space-y-3 text-[10px] font-mono text-slate-400 uppercase tracking-wider leading-relaxed">
+                <li className="flex gap-2"><span className="text-emerald-500">→</span> `motokage-api-key`.</li>
+                <li className="flex gap-2"><span className="text-emerald-500">→</span> Env Injection Runtime.</li>
+              </ul>
+            </div>
+
+            {/* Google Cloud Assist Card */}
+            <div className="p-6 bg-slate-900 border border-slate-800 rounded-[2.5rem] space-y-4 group hover:border-purple-500/30 transition-all">
+              <div className="flex justify-between items-center">
+                <h4 className="text-[9px] font-bold text-purple-400 uppercase tracking-widest">Cloud Assist</h4>
+                <div className="w-6 h-6 rounded-lg bg-purple-500/10 flex items-center justify-center text-purple-500 text-[10px] italic">A</div>
+              </div>
+              <ul className="space-y-3 text-[10px] font-mono text-slate-400 uppercase tracking-wider leading-relaxed">
+                <li className="flex gap-2"><span className="text-purple-500">→</span> Ops Technician.</li>
+                <li className="flex gap-2"><span className="text-purple-500">→</span> Diagnostic Telemetry.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Pillar 2: Public Ambassador vs. Private Studio */}
       <section className="space-y-16">
         <div className="grid md:grid-cols-2 gap-16 items-start">
           <div className="space-y-8">
-            <h3 className="text-3xl font-bold text-white font-heading">I. The Dual-Tier Infrastructure</h3>
+            <h3 className="text-3xl font-bold text-white font-heading">II. The Dual-Tier Infrastructure</h3>
             <div className="space-y-6 text-slate-400 text-sm leading-relaxed">
               <p>
                 The most critical architectural decision was the hard distinction between the <span className="text-indigo-400 font-bold uppercase tracking-widest">Public Ambassador</span> and the <span className="text-purple-400 font-bold uppercase tracking-widest">Private Studio</span>. 
@@ -30,7 +86,7 @@ const DocumentationView: React.FC = () => {
                 The Ambassador (this site) is an aligned interface calibrated for public interaction. It operates under strict guardrails to protect reputation and manage computational costs.
               </p>
               <p>
-                The Studio is my private workbench. It contains an <strong>Admin Section</strong> for real-time orchestration, memory "etching," and agent deployment. Even though the Studio is private, sharing its functionality here demonstrates the rigor of the "Identity-as-Code" methodology.
+                The Studio is the private workbench. It contains an <strong>Admin Section</strong> for real-time orchestration, memory "etching," and agent deployment. 
               </p>
             </div>
           </div>
@@ -61,67 +117,24 @@ const DocumentationView: React.FC = () => {
         </div>
       </section>
 
-      {/* Pillar II: Financial & Infrastructure Topology */}
-      <section className="space-y-12">
-        <div className="flex flex-col md:flex-row justify-between items-start gap-12">
-          <div className="md:w-1/3 space-y-6">
-             <h3 className="text-3xl font-bold text-white font-heading">II. Financial & Infrastructure</h3>
-             <p className="text-slate-400 text-sm leading-relaxed">
-               Maintaining a high-fidelity digital twin requires a professional-grade commitment to AI infrastructure and strategic billing models.
-             </p>
-             <div className="p-6 bg-indigo-500/5 border border-indigo-500/20 rounded-3xl">
-                <p className="text-[10px] font-mono text-indigo-400 uppercase tracking-widest leading-relaxed">
-                  "You don't just 'run' a twin; you sponsor its cognitive continuity through professional-tier services."
-                </p>
-             </div>
-          </div>
-          
-          <div className="md:w-2/3 grid md:grid-cols-2 gap-8">
-            <div className="p-8 bg-slate-900 border border-slate-800 rounded-[2.5rem] space-y-6 group hover:border-blue-500/30 transition-all">
-              <div className="flex justify-between items-center">
-                <h4 className="text-[10px] font-bold text-blue-400 uppercase tracking-widest">Google AI Ultra Layer</h4>
-                <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500 italic">U</div>
-              </div>
-              <ul className="space-y-4 text-[11px] font-mono text-slate-400 uppercase tracking-wider leading-relaxed">
-                <li className="flex gap-2"><span className="text-blue-500">→</span> Highest Quota Tier for Gemini API & Vertex AI Reasoning.</li>
-                <li className="flex gap-2"><span className="text-blue-500">→</span> Exclusive access to Project Mariner (Agentic Browser Plugin).</li>
-                <li className="flex gap-2"><span className="text-blue-500">→</span> Unlocks the 2M Token context window for 'Deep DNA' analysis.</li>
-              </ul>
-            </div>
-
-            <div className="p-8 bg-slate-900 border border-slate-800 rounded-[2.5rem] space-y-6 group hover:border-emerald-500/30 transition-all">
-              <div className="flex justify-between items-center">
-                <h4 className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">Google Cloud (GCP) Node</h4>
-                <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400 italic">C</div>
-              </div>
-              <ul className="space-y-4 text-[11px] font-mono text-slate-400 uppercase tracking-wider leading-relaxed">
-                <li className="flex gap-2"><span className="text-emerald-500">→</span> Pay-as-you-go model for serverless hosting & vector storage.</li>
-                <li className="flex gap-2"><span className="text-emerald-500">→</span> Secure API Key management via Secret Manager for browser tools.</li>
-                <li className="flex gap-2"><span className="text-emerald-500">→</span> Global multi-region availability for low-latency inference.</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* Pillar 3: Cloud Migration & Timing */}
       <section className="space-y-12 bg-slate-900/40 p-16 rounded-[4rem] border border-slate-800">
         <div className="max-w-4xl space-y-8">
-          <h3 className="text-3xl font-bold text-white font-heading">III. Going Cloud: The Shift to Persistence</h3>
+          <h3 className="text-3xl font-bold text-white font-heading">III. Persistence Strategy</h3>
           <p className="text-slate-400 text-sm leading-relaxed">
-            The decision to migrate from a local Python prototype to a global, serverless <strong>Google Cloud</strong> deployment was driven by the need for <strong>Identity Persistence</strong>. A digital twin must exist beyond the lifecycle of a local machine to be truly useful. We chose <strong>Cloud Run</strong> for its ability to scale to zero, ensuring we only pay for the cognitive cycles we use.
+            A digital twin must exist beyond the lifecycle of a local machine. We chose <strong>Google Cloud Run</strong> for its ability to scale to zero, ensuring we only pay for the cognitive cycles we use while maintaining global multi-region availability.
           </p>
           <div className="grid md:grid-cols-2 gap-12">
             <div className="space-y-4">
               <h4 className="text-[10px] font-bold text-blue-400 uppercase tracking-widest">Continuous Auto-Deployment</h4>
               <p className="text-[11px] text-slate-500 font-mono leading-relaxed">
-                We've established a seamless CI/CD pipeline. The Studio is connected to <strong>GitHub</strong>; any commit to the `main` branch triggers a <strong>Google Cloud Build</strong>, which containerizes the latest "DNA" and deploys it to the Artifact Registry automatically.
+                The Studio is connected to <strong>GitHub</strong>; any commit to the `main` branch triggers a <strong>Google Cloud Build</strong>, which containerizes the latest "DNA" and deploys it to the Artifact Registry automatically.
               </p>
             </div>
             <div className="space-y-4">
               <h4 className="text-[10px] font-bold text-amber-500 uppercase tracking-widest">Atomic Staging</h4>
               <p className="text-[11px] text-slate-500 font-mono leading-relaxed">
-                Strategic updates are never pushed blindly. A dedicated <strong>Staging Environment</strong> allows me to interact with a candidate version of the twin, ensuring alignment with my professional nuances before a production rollout.
+                Strategic updates are never pushed blindly. A dedicated <strong>Staging Environment</strong> allows interaction with a candidate version of the twin before production rollout.
               </p>
             </div>
           </div>
@@ -151,7 +164,7 @@ const DocumentationView: React.FC = () => {
             <h3 className="text-3xl font-bold text-white font-heading">IV. Guardrails & Credits</h3>
             <div className="space-y-6 text-slate-400 text-sm leading-relaxed">
               <p>
-                To protect against NSFW content and computational abuse, we've implemented multi-layered guardrails:
+                To protect against computational abuse and maintain alignment, we've implemented multi-layered guardrails:
               </p>
               <ul className="space-y-4 font-mono text-[10px] uppercase tracking-wider">
                 <li className="flex gap-4">
@@ -160,11 +173,11 @@ const DocumentationView: React.FC = () => {
                 </li>
                 <li className="flex gap-4">
                   <span className="text-emerald-500">✓</span>
-                  <span><strong>Contextual Enforcement</strong>: The system refuses to deviate from professional strategic discourse.</span>
+                  <span><strong>Contextual Enforcement</strong>: Refusal to deviate from professional strategic discourse.</span>
                 </li>
                 <li className="flex gap-4">
                   <span className="text-orange-500">⚠</span>
-                  <span><strong>Safety Filters</strong>: Built-in LLM safety layers are augmented with custom refusals for non-aligned topics.</span>
+                  <span><strong>Safety Filters</strong>: LLM safety layers are augmented with custom professional refusals.</span>
                 </li>
               </ul>
             </div>
@@ -190,25 +203,8 @@ const DocumentationView: React.FC = () => {
             ))}
          </div>
          <p className="text-center text-slate-500 text-[10px] font-mono uppercase tracking-[0.4em] max-w-2xl mx-auto italic">
-           "The eventual creation of specialized agents—realtors, researchers, and coaches—happens directly in the Studio Hub."
+           "The creation of specialized agents—realtors, researchers, and coaches—happens directly in the Studio Hub."
          </p>
-      </section>
-
-      {/* Showcases */}
-      <section className="border-t border-slate-900 pt-32 space-y-20">
-        <div className="flex flex-col md:flex-row gap-16 items-center">
-          <div className="md:w-1/2 space-y-8">
-            <h3 className="text-4xl font-bold text-white font-heading tracking-tight leading-none">Diné Talent <br/><span className="text-indigo-500">Marketplace</span></h3>
-            <p className="text-slate-400 text-base leading-relaxed font-light">
-              The Diné Talent Marketplace is a sister architecture dedicated to connecting Navajo professionals with global mandates. It leverages the same RAG and agentic logic developed for Motokage, scaled for a broader community impact.
-            </p>
-          </div>
-          <div className="md:w-1/2 w-full bg-slate-950 rounded-[3rem] p-4 border border-slate-800 shadow-2xl">
-             <div className="aspect-video bg-slate-900 rounded-[2.5rem] flex flex-col items-center justify-center border border-dashed border-slate-800">
-                <span className="text-[9px] font-mono text-slate-600 uppercase tracking-widest px-12 text-center">[Screenshot: Diné Talent Marketplace Dashboard]</span>
-             </div>
-          </div>
-        </div>
       </section>
 
       {/* Reflections */}
@@ -219,14 +215,8 @@ const DocumentationView: React.FC = () => {
              <p>
                What started as a simple chatbot project has evolved into a sophisticated **Thought Partnership**. Our collaboration highlighted the need for AI to not just repeat our thoughts, but to challenge them.
              </p>
-             <p>
-               The shift from treating the prompt as a block of text to treating it as **Versioned DNA** allowed for a level of calibration that makes the twin feel truly high-fidelity.
-             </p>
            </div>
            <div className="space-y-6">
-             <p>
-               The "Nexus" philosophy—active semantic filtering via Project Mariner—ensures that the twin stays focused on high-value context rather than just ambient digital noise.
-             </p>
              <p>
                Ultimately, Motokage is a prototype for how we can build professional legacies that are secure, ethical, and strategically aligned.
              </p>
