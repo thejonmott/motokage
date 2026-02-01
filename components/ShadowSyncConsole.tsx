@@ -131,7 +131,7 @@ const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona }) => {
       });
 
       setProgress(100);
-      setStatus({ type: 'success', msg: `${targetEnv.toUpperCase()} Sync Successful. Identity Manifest Transmitted.` });
+      setStatus({ type: 'success', msg: `${targetEnv.toUpperCase()} Sync Successful. Build Pipeline Patched.` });
     } catch (e: any) {
       setStatus({ type: 'error', msg: e.message });
     }
@@ -141,7 +141,7 @@ const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona }) => {
     <div className="bg-slate-900 border border-slate-800 rounded-[3rem] p-12 shadow-2xl space-y-10">
       <div className="flex justify-between items-center border-b border-slate-800 pb-8">
         <div className="space-y-1">
-          <h3 className="text-sm font-bold text-white uppercase tracking-widest">Global Uplink v6.8</h3>
+          <h3 className="text-sm font-bold text-white uppercase tracking-widest">Global Uplink v7.2</h3>
           <p className="text-[10px] text-slate-500 font-mono uppercase tracking-widest">GCP Project: motokage</p>
         </div>
         <div className="flex items-center gap-6">
@@ -150,6 +150,28 @@ const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona }) => {
              <button onClick={() => setTargetEnv('main')} className={`px-4 py-1.5 rounded-lg text-[8px] font-bold uppercase transition-all ${targetEnv === 'main' ? 'bg-purple-500/10 text-purple-400 border border-purple-500/30' : 'text-slate-600'}`}>Production</button>
           </div>
           <div className={`w-2 h-2 rounded-full ${status.type === 'loading' ? 'bg-blue-500 animate-pulse' : (targetEnv === 'main' ? 'bg-purple-500' : 'bg-amber-500')}`}></div>
+        </div>
+      </div>
+
+      <div className="p-8 bg-slate-950 border border-indigo-500/20 rounded-3xl space-y-6">
+        <h4 className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest flex items-center gap-2">
+           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+           Build Logic: "Safe Shell" Protocol
+        </h4>
+        <div className="grid md:grid-cols-2 gap-8 text-[9px] font-mono leading-relaxed">
+           <div className="space-y-3">
+              <p className="text-slate-400">Conflict Resolved: <span className="text-white">Substitution Conflicts</span></p>
+              <ul className="text-slate-500 space-y-1">
+                <li>1. Code now handles <span className="text-white">Environment Detection</span> via shell.</li>
+                <li>2. <span className="text-white">Dockerfile</span> has been injected into the file stack.</li>
+                <li>3. No manual GCP Substitution variables are required.</li>
+                <li>4. <span className="text-emerald-400 font-bold underline">Sync again to update the logic.</span></li>
+              </ul>
+           </div>
+           <div className="p-4 bg-slate-900 rounded-xl border border-white/5 space-y-2">
+              <p className="text-slate-400 italic">"The build script has been simplified to direct shell execution, preventing GCP's parser from tripping on variable names."</p>
+              <a href="https://console.cloud.google.com/cloud-build/builds?project=motokage" target="_blank" rel="noreferrer" className="block text-center py-2 bg-indigo-600/20 text-indigo-400 rounded-lg border border-indigo-500/30 hover:bg-indigo-600/30 transition-all">Monitor Build Progress</a>
+           </div>
         </div>
       </div>
 
@@ -175,40 +197,10 @@ const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona }) => {
           />
         </div>
       </div>
-      
-      <div className="p-10 bg-slate-950 border border-emerald-500/20 rounded-[2.5rem] space-y-6 shadow-xl">
-         <h4 className="text-[10px] font-bold text-emerald-400 uppercase tracking-[0.4em] flex items-center gap-2">
-           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg>
-           Identity Stack Health
-         </h4>
-         <div className="grid md:grid-cols-3 gap-8">
-           <div className="space-y-2">
-             <p className="text-[9px] text-slate-500 font-mono uppercase">System Manifest</p>
-             <div className="flex gap-2 items-center">
-                <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></div>
-                <span className="text-[8px] text-white font-mono uppercase tracking-widest">Docker & Cloud Ready</span>
-             </div>
-           </div>
-           <div className="space-y-2">
-             <p className="text-[9px] text-slate-500 font-mono uppercase">Sync Protocol</p>
-             <span className="text-[8px] text-white font-mono uppercase tracking-widest">Atomic Injection</span>
-           </div>
-           <div className="space-y-2">
-             <p className="text-[9px] text-slate-500 font-mono uppercase">Logic State</p>
-             <span className="text-[8px] text-white font-mono uppercase tracking-widest">V7.0-Stable</span>
-           </div>
-         </div>
-         
-         <div className="pt-6 border-t border-slate-900">
-           <p className="text-[9px] text-slate-500 leading-relaxed font-mono uppercase italic">
-              All infrastructure files (Dockerfile, Nginx, CloudBuild) are detected. Syncing now will transmit the latest identity mesh to your GitHub.
-           </p>
-         </div>
-      </div>
 
       <div className="flex flex-col md:flex-row gap-4">
         <button onClick={handleAtomicSync} disabled={status.type === 'loading'} className={`flex-grow py-6 rounded-3xl font-bold text-[11px] uppercase tracking-[0.4em] transition-all shadow-2xl relative overflow-hidden group border ${targetEnv === 'main' ? 'bg-purple-600 hover:bg-purple-700 border-purple-500/50' : 'bg-amber-600 hover:bg-amber-700 border-amber-500/50'}`}>
-          {status.type === 'loading' ? 'Transmitting Identity Mesh...' : `Push Identity to ${targetEnv.toUpperCase()}`}
+          {status.type === 'loading' ? 'Deploying Patched Logic...' : `Sync Patched Identity to ${targetEnv.toUpperCase()}`}
         </button>
       </div>
 
@@ -217,7 +209,7 @@ const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona }) => {
           <div className="h-1.5 w-full bg-slate-950 rounded-full overflow-hidden border border-slate-800">
              <div className={`h-full transition-all duration-300 shadow-lg ${targetEnv === 'main' ? 'bg-purple-500' : 'bg-amber-500'}`} style={{ width: `${progress}%` }}></div>
           </div>
-          <p className="text-[8px] text-slate-500 font-mono text-center uppercase tracking-widest">UPLOADING: <span className="text-white">{currentFile}</span></p>
+          <p className="text-[8px] text-slate-500 font-mono text-center uppercase tracking-widest">INJECTING: <span className="text-white">{currentFile}</span></p>
         </div>
       )}
       
@@ -227,10 +219,9 @@ const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona }) => {
           {status.type === 'success' && (
             <div className="mt-4 space-y-3">
               <div className="flex justify-center gap-4">
-                <a href="https://console.cloud.google.com/cloud-build/builds?project=motokage" target="_blank" rel="noreferrer" className="px-4 py-2 bg-slate-800 rounded-lg text-[8px] hover:bg-slate-700 transition-all">GCP Build Log</a>
+                <a href="https://console.cloud.google.com/cloud-build/builds?project=motokage" target="_blank" rel="noreferrer" className="px-4 py-2 bg-slate-800 rounded-lg text-[8px] hover:bg-slate-700 transition-all">View Patch Build</a>
                 <a href={targetEnv === 'main' ? prodUrl : stagingUrl} target="_blank" rel="noreferrer" className="px-4 py-2 bg-white/10 rounded-lg text-[8px] hover:bg-white/20 transition-all">Preview Site</a>
               </div>
-              <p className="text-[7px] text-slate-500 normal-case opacity-60">Wait 2-3 minutes for the build to complete on GCP.</p>
             </div>
           )}
         </div>
