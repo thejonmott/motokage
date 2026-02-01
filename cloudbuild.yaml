@@ -1,44 +1,27 @@
 steps:
-  # 1. Build the container image
   - name: 'gcr.io/cloud-builders/docker'
     entrypoint: 'bash'
     args:
       - '-c'
       - |
         if [ "$BRANCH_NAME" == "staging" ]; then
-          echo "Building STAGING environment..."
           docker build -t gcr.io/$PROJECT_ID/motokage-studio:$BRANCH_NAME --build-arg VITE_APP_ENV=staging .
         else
-          echo "Building PRODUCTION environment..."
           docker build -t gcr.io/$PROJECT_ID/motokage-studio:$BRANCH_NAME --build-arg VITE_APP_ENV=production .
         fi
-
-  # 2. Push the image to GCR
   - name: 'gcr.io/cloud-builders/docker'
     args: ['push', 'gcr.io/$PROJECT_ID/motokage-studio:$BRANCH_NAME']
-
-  # 3. Deploy to Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: 'bash'
     args:
       - '-c'
       - |
         if [ "$BRANCH_NAME" == "staging" ]; then
-          gcloud run deploy motokage-studio-staging \
-            --image gcr.io/$PROJECT_ID/motokage-studio:$BRANCH_NAME \
-            --region us-central1 \
-            --platform managed \
-            --allow-unauthenticated
+          gcloud run deploy motokage-studio-staging --image gcr.io/$PROJECT_ID/motokage-studio:$BRANCH_NAME --region us-central1 --platform managed --allow-unauthenticated
         else
-          gcloud run deploy motokage-studio \
-            --image gcr.io/$PROJECT_ID/motokage-studio:$BRANCH_NAME \
-            --region us-central1 \
-            --platform managed \
-            --allow-unauthenticated
+          gcloud run deploy motokage-studio --image gcr.io/$PROJECT_ID/motokage-studio:$BRANCH_NAME --region us-central1 --platform managed --allow-unauthenticated
         fi
-
 images:
   - 'gcr.io/$PROJECT_ID/motokage-studio:$BRANCH_NAME'
-
 options:
   logging: CLOUD_LOGGING_ONLY
