@@ -20,7 +20,8 @@ const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona }) => {
   const [progress, setProgress] = useState(0);
   const [currentFile, setCurrentFile] = useState('');
 
-  const projectSuffix = "us-central1.a.run.app"; 
+  // Updated to match the user's specific project ID and Cloud Run URL pattern
+  const projectSuffix = "419113009106.us-central1.run.app"; 
   const stagingUrl = `https://motokage-staging-${projectSuffix}`;
   const prodUrl = `https://motokage-studio-${projectSuffix}`;
 
@@ -56,19 +57,16 @@ const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona }) => {
         'Content-Type': 'application/json' 
       };
 
-      // 1. Check if branch exists, if not, attempt to create it
       const branchCheck = await fetch(`https://api.github.com/repos/${repo}/git/refs/heads/${targetEnv}`, { headers });
       
       let latestCommitSha;
       if (!branchCheck.ok) {
         setCurrentFile(`Provisioning ${targetEnv} branch...`);
-        // Get main branch SHA to branch from
         const mainRes = await fetch(`https://api.github.com/repos/${repo}/git/refs/heads/main`, { headers });
         if (!mainRes.ok) throw new Error("Main branch not found. Please ensure 'main' exists first.");
         const mainData = await mainRes.json();
         const mainSha = mainData.object.sha;
 
-        // Create the missing branch
         const createRes = await fetch(`https://api.github.com/repos/${repo}/git/refs`, {
           method: 'POST',
           headers,
@@ -84,7 +82,6 @@ const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona }) => {
         latestCommitSha = refData.object.sha;
       }
 
-      // 2. Transmit Files
       const manifests = getSystemManifests();
       const allFiles = [...sourceFiles, ...Object.keys(manifests)];
       const treeItems: any[] = [];
@@ -110,7 +107,6 @@ const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona }) => {
         setProgress(Math.round(((i + 1) / allFiles.length) * 80));
       }
 
-      // 3. Create Tree & Commit
       const treeRes = await fetch(`https://api.github.com/repos/${repo}/git/trees`, {
         method: 'POST',
         headers,
