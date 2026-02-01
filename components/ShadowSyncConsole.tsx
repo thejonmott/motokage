@@ -25,25 +25,16 @@ const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona }) => {
   }, [repo, token]);
 
   const sourceFiles = [
-    'App.tsx', 'types.ts', 'index.tsx', 'metadata.json', 'index.html', 'package.json', 'vite.config.ts', 'tsconfig.json',
+    'App.tsx', 'types.ts', 'index.tsx', 'metadata.json', 'index.html', 'package.json', 'vite.config.ts', 'tsconfig.json', 'cloudbuild.yaml', '.dockerignore',
     'components/Header.tsx', 'components/PersonaForm.tsx', 'components/ArchitectureView.tsx',
     'components/MemoryVault.tsx', 'components/NexusView.tsx', 'components/ChatInterface.tsx',
-    'components/ComparisonView.tsx', 'components/ShadowSyncConsole.tsx', 'components/StagingView.tsx'
+    'components/ComparisonView.tsx', 'components/ShadowSyncConsole.tsx', 'components/StagingView.tsx',
+    'components/DNAView.tsx', 'components/OriginStoryView.tsx', 'components/MosaicView.tsx',
+    'components/MandatesView.tsx', 'components/DashboardView.tsx'
   ];
 
   const getSystemManifests = () => ({
     'Dockerfile': `FROM node:20-slim AS build\nWORKDIR /app\nCOPY package*.json ./\nRUN npm install\nCOPY . .\nRUN npm run build\n\nFROM nginx:alpine\nRUN sed -i 's/80/8080/g' /etc/nginx/conf.d/default.conf\nCOPY --from=build /app/dist /usr/share/nginx/html\nEXPOSE 8080\nCMD ["nginx", "-g", "daemon off;"]`,
-    'cloudbuild.yaml': `steps:\n  - name: 'gcr.io/cloud-builders/docker'\n    args: ['build', '-t', 'gcr.io/$PROJECT_ID/motokage-studio', '.']\n  - name: 'gcr.io/cloud-builders/docker'\n    args: ['push', 'gcr.io/$PROJECT_ID/motokage-studio']\n  - name: 'gcloud'\n    args: ['run', 'deploy', 'motokage-studio', '--image', 'gcr.io/$PROJECT_ID/motokage-studio', '--region', 'us-central1', '--platform', 'managed', '--allow-unauthenticated', '--port', '8080']\nimages: ['gcr.io/$PROJECT_ID/motokage-studio']`,
-    '.dockerignore': `node_modules\ndist\n.git\n.DS_Store`,
-    'package.json': JSON.stringify({
-      "name": "motokage-studio",
-      "private": true,
-      "version": "1.0.0",
-      "type": "module",
-      "scripts": { "dev": "vite", "build": "vite build", "preview": "vite preview" },
-      "dependencies": { "@google/genai": "^1.38.0", "react": "^19.0.0", "react-dom": "^19.0.0" },
-      "devDependencies": { "@types/react": "^19.0.0", "@types/react-dom": "^19.0.0", "@vitejs/plugin-react": "^4.3.4", "typescript": "^5.7.3", "vite": "^6.0.7" }
-    }, null, 2),
     'shadow_config.json': JSON.stringify(persona, null, 2)
   });
 
@@ -68,7 +59,7 @@ const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona }) => {
         setCurrentFile(path);
         let content = manifests[path as keyof typeof manifests] || '';
         if (!content) {
-          const res = await fetch(path);
+          const res = await fetch(`/${path}`); // Ensure root relative fetch
           if (!res.ok) continue;
           content = await res.text();
         }
@@ -80,7 +71,7 @@ const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona }) => {
         });
         const blobData = await blobRes.json();
         treeItems.push({ path, mode: '100644', type: 'blob', sha: blobData.sha });
-        setProgress(Math.round(((i + 1) / allFiles.length) * 50));
+        setProgress(Math.round(((i + 1) / allFiles.length) * 80));
       }
 
       const treeRes = await fetch(`https://api.github.com/repos/${repo}/git/trees`, {
@@ -93,7 +84,7 @@ const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona }) => {
       const commitRes = await fetch(`https://api.github.com/repos/${repo}/git/commits`, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ message: `Global Identity Sync: ${new Date().toISOString()}`, tree: treeData.sha, parents: [latestCommitSha] })
+        body: JSON.stringify({ message: `Identity Mesh Update: ${new Date().toISOString()}`, tree: treeData.sha, parents: [latestCommitSha] })
       });
       const commitData = await commitRes.json();
 
@@ -104,7 +95,7 @@ const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona }) => {
       });
 
       setProgress(100);
-      setStatus({ type: 'success', msg: 'Global Sync Complete. Persistent DNA Updated.' });
+      setStatus({ type: 'success', msg: 'Core Mesh Synchronized. Remote Build Triggered.' });
     } catch (e: any) {
       setStatus({ type: 'error', msg: e.message });
     }
@@ -114,8 +105,8 @@ const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona }) => {
     <div className="bg-slate-900 border border-slate-800 rounded-[3rem] p-12 shadow-2xl space-y-10">
       <div className="flex justify-between items-center border-b border-slate-800 pb-8">
         <div className="space-y-1">
-          <h3 className="text-sm font-bold text-white uppercase tracking-widest">Global Uplink v4.0</h3>
-          <p className="text-[10px] text-slate-500 font-mono uppercase">Single-Source DNA Synchronizer</p>
+          <h3 className="text-sm font-bold text-white uppercase tracking-widest">Global Uplink v4.2</h3>
+          <p className="text-[10px] text-slate-500 font-mono uppercase">Identity State Synchronizer</p>
         </div>
         <div className="flex items-center gap-4">
           <a 
@@ -124,7 +115,7 @@ const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona }) => {
             rel="noopener noreferrer"
             className="px-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-[9px] font-bold text-indigo-400 uppercase tracking-widest hover:border-indigo-500/50 transition-all flex items-center gap-2"
           >
-            Cloud Dashboard
+            Cloud Registry
           </a>
           <div className={`w-2 h-2 rounded-full ${status.type === 'loading' ? 'bg-blue-500 animate-pulse' : 'bg-green-500'}`}></div>
         </div>
@@ -132,36 +123,36 @@ const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona }) => {
       
       <div className="grid md:grid-cols-2 gap-8">
         <div className="space-y-4">
-          <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">GitHub Repository (Target DNA)</label>
+          <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">GitHub Repository</label>
           <input type="text" value={repo} onChange={(e) => setRepo(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-6 py-4 text-xs text-white outline-none focus:border-indigo-500 transition-all font-mono" />
         </div>
         <div className="space-y-4">
-          <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Global Access Token</label>
+          <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Access Token</label>
           <input type="password" value={token} onChange={(e) => setToken(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-6 py-4 text-xs text-white outline-none focus:border-indigo-500 transition-all font-mono" />
         </div>
       </div>
 
       <div className="p-8 bg-slate-950 border border-slate-800 rounded-3xl space-y-4">
          <h4 className="text-[9px] font-bold text-white uppercase tracking-widest flex items-center gap-2">
-           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-           Security Notice
+           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+           Build Integrity
          </h4>
          <p className="text-[10px] text-slate-500 font-mono leading-relaxed uppercase tracking-wider">
-           Syncing will overwrite the remote <span className="text-white">shadow_config.json</span>. This becomes the permanent identity source for all hydrated sessions globally. Ensure current local DNA is verified before uplink.
+           Uplink includes all core components. Overwrites <span className="text-white">main</span> branch and triggers <span className="text-indigo-400">Cloud Build</span>.
          </p>
       </div>
 
       <div className="space-y-8">
         <button onClick={handleAtomicSync} disabled={status.type === 'loading'} className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white py-6 rounded-3xl font-bold text-[11px] uppercase tracking-[0.4em] transition-all shadow-2xl relative overflow-hidden group">
           <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
-          {status.type === 'loading' ? 'Encrypting & Transmitting DNA...' : 'Perform Global Identity Sync'}
+          {status.type === 'loading' ? 'Encrypting & Pushing Core Mesh...' : 'Uplink Local State to Registry'}
         </button>
         {status.type === 'loading' && (
           <div className="space-y-4">
-            <div className="h-2 w-full bg-slate-950 rounded-full overflow-hidden border border-slate-800">
+            <div className="h-1.5 w-full bg-slate-950 rounded-full overflow-hidden border border-slate-800">
                <div className="h-full bg-indigo-500 transition-all duration-300 shadow-[0_0_20px_rgba(79,70,229,0.5)]" style={{ width: `${progress}%` }}></div>
             </div>
-            <p className="text-[8px] text-slate-500 font-mono text-center uppercase tracking-widest">DNA_PACKET: <span className="text-white">{currentFile}</span></p>
+            <p className="text-[8px] text-slate-500 font-mono text-center uppercase tracking-widest">TRANSMITTING: <span className="text-white">{currentFile}</span></p>
           </div>
         )}
         {status.msg && (
