@@ -1,6 +1,8 @@
 # Stage 1: Build the React application
 FROM node:20-alpine AS build
 WORKDIR /app
+ARG VITE_APP_ENV
+ENV VITE_APP_ENV=$VITE_APP_ENV
 COPY package*.json ./
 RUN npm install
 COPY . .
