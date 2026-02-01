@@ -13,14 +13,14 @@ const toBase64 = (str: string) => {
 };
 
 const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona }) => {
-  const [repo, setRepo] = useState(localStorage.getItem('motokage_repo') || 'thejonmott/motokage');
+  const [repo, setRepo] = useState(localStorage.getItem('motokage_repo') || '');
   const [token, setToken] = useState(localStorage.getItem('motokage_token') || '');
   const [targetEnv, setTargetEnv] = useState<'staging' | 'main'>(localStorage.getItem('motokage_env') as any || 'staging');
   const [status, setStatus] = useState<{ type: 'idle' | 'loading' | 'success' | 'error', msg?: string }>({ type: 'idle' });
   const [progress, setProgress] = useState(0);
   const [currentFile, setCurrentFile] = useState('');
 
-  // The project identifier from your URL
+  // Suffix from your working production URL
   const projectSuffix = "419113009106.us-central1.run.app"; 
   const stagingUrl = `https://motokage-studio-staging-${projectSuffix}`;
   const prodUrl = `https://motokage-studio-${projectSuffix}`;
@@ -31,7 +31,6 @@ const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona }) => {
     localStorage.setItem('motokage_env', targetEnv);
   }, [repo, token, targetEnv]);
 
-  // Ensure ALL infrastructure files are synced
   const sourceFiles = [
     'App.tsx', 'types.ts', 'index.tsx', 'metadata.json', 'index.html', 'package.json', 'vite.config.ts', 'tsconfig.json', 'cloudbuild.yaml', '.dockerignore', 'Dockerfile', 'default.conf',
     'components/Header.tsx', 'components/PersonaForm.tsx', 'components/ArchitectureView.tsx',
@@ -46,7 +45,10 @@ const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona }) => {
   });
 
   const handleAtomicSync = async () => {
-    if (!repo || !token) { setStatus({ type: 'error', msg: 'Missing Repo or Token' }); return; }
+    if (!repo || !token) { 
+      setStatus({ type: 'error', msg: 'Missing Repo or Token' }); 
+      return; 
+    }
     setStatus({ type: 'loading' });
     setProgress(0);
     setCurrentFile('Initializing connection...');
@@ -64,17 +66,14 @@ const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona }) => {
       if (!branchCheck.ok) {
         setCurrentFile(`Provisioning ${targetEnv} branch...`);
         const mainRes = await fetch(`https://api.github.com/repos/${repo}/git/refs/heads/main`, { headers });
-        if (!mainRes.ok) throw new Error("Main branch not found. Please ensure 'main' exists first.");
+        if (!mainRes.ok) throw new Error("Main branch not found. Ensure 'main' exists.");
         const mainData = await mainRes.json();
         const mainSha = mainData.object.sha;
 
         const createRes = await fetch(`https://api.github.com/repos/${repo}/git/refs`, {
           method: 'POST',
           headers,
-          body: JSON.stringify({
-            ref: `refs/heads/${targetEnv}`,
-            sha: mainSha
-          })
+          body: JSON.stringify({ ref: `refs/heads/${targetEnv}`, sha: mainSha })
         });
         if (!createRes.ok) throw new Error(`Failed to auto-create '${targetEnv}' branch.`);
         latestCommitSha = mainSha;
@@ -119,7 +118,7 @@ const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona }) => {
         method: 'POST',
         headers,
         body: JSON.stringify({ 
-          message: `Identity Mesh Sync [${targetEnv.toUpperCase()}]: ${new Date().toISOString()}`, 
+          message: `Digital Twin Sync [${targetEnv.toUpperCase()}]: ${new Date().toISOString()}`, 
           tree: treeData.sha, 
           parents: [latestCommitSha] 
         })
@@ -133,24 +132,7 @@ const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona }) => {
       });
 
       setProgress(100);
-      setStatus({ type: 'success', msg: `${targetEnv === 'main' ? 'PRODUCTION' : 'STAGING'} Sync Complete. Cloud Build triggered.` });
-    } catch (e: any) {
-      setStatus({ type: 'error', msg: e.message });
-    }
-  };
-
-  const handlePromoteToProduction = async () => {
-    if (!token) return;
-    setStatus({ type: 'loading' });
-    try {
-      const headers = { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json' };
-      const mergeRes = await fetch(`https://api.github.com/repos/${repo}/merges`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ base: 'main', head: 'staging', commit_message: 'PROMOTION: Staging state approved for Production release.' })
-      });
-      if (!mergeRes.ok) throw new Error('Promotion failed. Ensure Staging has changes main does not have.');
-      setStatus({ type: 'success', msg: 'PROMOTED TO PRODUCTION: Live twin is updating.' });
+      setStatus({ type: 'success', msg: `${targetEnv.toUpperCase()} Sync Successful. Build Injected.` });
     } catch (e: any) {
       setStatus({ type: 'error', msg: e.message });
     }
@@ -160,7 +142,7 @@ const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona }) => {
     <div className="bg-slate-900 border border-slate-800 rounded-[3rem] p-12 shadow-2xl space-y-10">
       <div className="flex justify-between items-center border-b border-slate-800 pb-8">
         <div className="space-y-1">
-          <h3 className="text-sm font-bold text-white uppercase tracking-widest">Global Uplink v5.5</h3>
+          <h3 className="text-sm font-bold text-white uppercase tracking-widest">Global Uplink v5.8</h3>
           <p className="text-[10px] text-slate-500 font-mono uppercase tracking-widest">GCP Project: motokage</p>
         </div>
         <div className="flex items-center gap-6">
@@ -171,23 +153,35 @@ const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona }) => {
           <div className={`w-2 h-2 rounded-full ${status.type === 'loading' ? 'bg-blue-500 animate-pulse' : (targetEnv === 'main' ? 'bg-purple-500' : 'bg-amber-500')}`}></div>
         </div>
       </div>
-      
+
       <div className="grid md:grid-cols-2 gap-8">
         <div className="space-y-4">
-          <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">GitHub Repository</label>
-          <input type="text" value={repo} onChange={(e) => setRepo(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-6 py-4 text-xs text-white outline-none focus:border-indigo-500 transition-all font-mono" />
+          <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">GitHub Repository (path)</label>
+          <input 
+            type="text" 
+            value={repo} 
+            onChange={(e) => setRepo(e.target.value)} 
+            placeholder="username/repository"
+            className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-6 py-4 text-xs text-white outline-none focus:border-indigo-500 transition-all font-mono" 
+          />
         </div>
         <div className="space-y-4">
-          <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Access Token</label>
-          <input type="password" value={token} onChange={(e) => setToken(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-6 py-4 text-xs text-white outline-none focus:border-indigo-500 transition-all font-mono" />
+          <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Personal Access Token</label>
+          <input 
+            type="password" 
+            value={token} 
+            onChange={(e) => setToken(e.target.value)} 
+            placeholder="ghp_xxxxxxxxxxxx"
+            className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-6 py-4 text-xs text-white outline-none focus:border-indigo-500 transition-all font-mono" 
+          />
         </div>
       </div>
-
+      
       <div className="grid md:grid-cols-2 gap-8">
         <div className="p-8 bg-slate-950 border border-slate-800 rounded-3xl space-y-4">
            <h4 className="text-[9px] font-bold text-white uppercase tracking-widest flex items-center gap-2">Target: {targetEnv.toUpperCase()}</h4>
            <div className="space-y-2">
-             <p className="text-[10px] text-slate-500 font-mono leading-relaxed uppercase tracking-wider italic">GCP Endpoint:</p>
+             <p className="text-[10px] text-slate-500 font-mono leading-relaxed uppercase tracking-wider italic">Predicted Endpoint:</p>
              <a href={targetEnv === 'main' ? prodUrl : stagingUrl} target="_blank" rel="noreferrer" className="text-[10px] text-blue-400 font-mono hover:underline truncate block">
                {targetEnv === 'main' ? prodUrl : stagingUrl}
              </a>
@@ -195,24 +189,19 @@ const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona }) => {
         </div>
 
         <div className="p-8 bg-slate-950 border border-slate-800 rounded-3xl space-y-4">
-           <h4 className="text-[9px] font-bold text-white uppercase tracking-widest flex items-center gap-2">Build Health</h4>
-           <div className="flex items-center gap-3">
-             <span className={`w-2 h-2 rounded-full ${status.type === 'success' ? 'bg-green-500' : 'bg-slate-700'}`}></span>
-             <span className="text-[10px] text-slate-500 font-mono uppercase tracking-widest">{status.type === 'loading' ? 'Transmitting...' : 'Uplink Stable'}</span>
+           <h4 className="text-[9px] font-bold text-white uppercase tracking-widest flex items-center gap-2">Troubleshooting</h4>
+           <div className="space-y-1">
+             <p className="text-[9px] text-slate-500 font-mono leading-relaxed uppercase">1. Click Sync to STAGING</p>
+             <p className="text-[9px] text-slate-500 font-mono leading-relaxed uppercase">2. Check "Cloud Build" Triggers</p>
+             <p className="text-[9px] text-slate-500 font-mono leading-relaxed uppercase">3. Wait for Build Completion</p>
            </div>
         </div>
       </div>
 
       <div className="flex flex-col md:flex-row gap-4">
         <button onClick={handleAtomicSync} disabled={status.type === 'loading'} className={`flex-grow py-6 rounded-3xl font-bold text-[11px] uppercase tracking-[0.4em] transition-all shadow-2xl relative overflow-hidden group border ${targetEnv === 'main' ? 'bg-purple-600 hover:bg-purple-700 border-purple-500/50' : 'bg-amber-600 hover:bg-amber-700 border-amber-500/50'}`}>
-          {status.type === 'loading' ? 'Executing Multi-Stage Build...' : `Sync to ${targetEnv.toUpperCase()}`}
+          {status.type === 'loading' ? 'Transmitting Identity Mesh...' : `Sync to ${targetEnv.toUpperCase()}`}
         </button>
-
-        {targetEnv === 'staging' && (
-          <button onClick={handlePromoteToProduction} disabled={status.type === 'loading'} className="px-10 py-6 bg-slate-950 border border-slate-800 hover:border-green-500/50 hover:text-green-400 rounded-3xl font-bold text-[11px] uppercase tracking-widest transition-all text-slate-500">
-            Promote to Production
-          </button>
-        )}
       </div>
 
       {status.type === 'loading' && (
@@ -220,7 +209,7 @@ const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona }) => {
           <div className="h-1.5 w-full bg-slate-950 rounded-full overflow-hidden border border-slate-800">
              <div className={`h-full transition-all duration-300 shadow-lg ${targetEnv === 'main' ? 'bg-purple-500' : 'bg-amber-500'}`} style={{ width: `${progress}%` }}></div>
           </div>
-          <p className="text-[8px] text-slate-500 font-mono text-center uppercase tracking-widest">UPLOADING INFRASTRUCTURE: <span className="text-white">{currentFile}</span></p>
+          <p className="text-[8px] text-slate-500 font-mono text-center uppercase tracking-widest">UPLOADING: <span className="text-white">{currentFile}</span></p>
         </div>
       )}
       
@@ -228,9 +217,12 @@ const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona }) => {
         <div className={`p-6 rounded-2xl text-[10px] font-mono text-center uppercase tracking-widest border animate-in fade-in slide-in-from-top-2 ${status.type === 'error' ? 'bg-red-500/10 border-red-500/20 text-red-400' : 'bg-green-500/10 border-green-500/20 text-green-400'}`}>
           {status.msg}
           {status.type === 'success' && (
-            <div className="mt-4 space-y-2">
-              <p className="text-[8px] text-slate-500">Wait ~2-3 minutes for the Google Cloud Build to complete before launching.</p>
-              <a href={targetEnv === 'main' ? prodUrl : stagingUrl} target="_blank" rel="noreferrer" className="inline-block px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-[8px] hover:bg-white/10 transition-all">Launch Deployment</a>
+            <div className="mt-4 space-y-3">
+              <p className="text-[8px] text-slate-400 normal-case italic">Uplink verified. Cloud Build is now compiling the Docker container. This usually takes 2-4 minutes.</p>
+              <div className="flex justify-center gap-4">
+                <a href="https://console.cloud.google.com/cloud-build/builds?project=motokage" target="_blank" rel="noreferrer" className="px-4 py-2 bg-slate-800 rounded-lg text-[8px] hover:bg-slate-700 transition-all">Check Build Progress</a>
+                <a href={targetEnv === 'main' ? prodUrl : stagingUrl} target="_blank" rel="noreferrer" className="px-4 py-2 bg-white/10 rounded-lg text-[8px] hover:bg-white/20 transition-all">Launch Preview</a>
+              </div>
             </div>
           )}
         </div>
