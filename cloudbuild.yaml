@@ -1,17 +1,21 @@
 steps:
   # 1. Build the container image
+  # We use bash to handle environment logic safely without relying on GCP substitutions
   - name: 'gcr.io/cloud-builders/docker'
     entrypoint: 'bash'
     args:
       - '-c'
       - |
-        ENV_NAME="production"
+        DEPLOY_ENV="production"
         if [ "$BRANCH_NAME" == "staging" ]; then
-          ENV_NAME="staging"
+          DEPLOY_ENV="staging"
         fi
+        
+        echo "Detected branch: $BRANCH_NAME. Setting VITE_APP_ENV to: $DEPLOY_ENV"
+        
         docker build \
           -t gcr.io/$PROJECT_ID/motokage-studio:$BRANCH_NAME \
-          --build-arg VITE_APP_ENV=$ENV_NAME \
+          --build-arg VITE_APP_ENV=$$DEPLOY_ENV \
           .
 
   # 2. Push to Container Registry
@@ -24,20 +28,16 @@ steps:
     args:
       - '-c'
       - |
-        if [ "$BRANCH_NAME" == "main" ]; then
-          gcloud run deploy motokage-studio \
-            --image gcr.io/$PROJECT_ID/motokage-studio:$BRANCH_NAME \
-            --region us-central1 \
-            --platform managed \
-            --allow-unauthenticated
-        else
-          # Deploying as a separate service for staging isolation
-          gcloud run deploy motokage-studio-staging \
-            --image gcr.io/$PROJECT_ID/motokage-studio:$BRANCH_NAME \
-            --region us-central1 \
-            --platform managed \
-            --allow-unauthenticated
+        SERVICE_NAME="motokage-studio"
+        if [ "$BRANCH_NAME" == "staging" ]; then
+          SERVICE_NAME="motokage-studio-staging"
         fi
+        
+        gcloud run deploy $$SERVICE_NAME \
+          --image gcr.io/$PROJECT_ID/motokage-studio:$BRANCH_NAME \
+          --region us-central1 \
+          --platform managed \
+          --allow-unauthenticated
 
 images:
   - 'gcr.io/$PROJECT_ID/motokage-studio:$BRANCH_NAME'
