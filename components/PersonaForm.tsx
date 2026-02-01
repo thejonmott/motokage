@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Persona, Mandate } from '../types';
 
@@ -13,7 +12,7 @@ const DNAStrand = () => (
 );
 
 const PersonaForm: React.FC<PersonaFormProps> = ({ persona, setPersona, onSave }) => {
-  const [newMandate, setNewMandate] = useState({ title: '', description: '' });
+  const [newMandate, setNewMandate] = useState({ title: '', objective: '' });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -22,9 +21,16 @@ const PersonaForm: React.FC<PersonaFormProps> = ({ persona, setPersona, onSave }
 
   const addMandate = () => {
     if (!newMandate.title) return;
-    const mandate: Mandate = { id: `m_${Date.now()}`, ...newMandate, status: 'active', priority: 'STRATEGIC' };
+    const mandate: Mandate = { 
+      id: `m_${Date.now()}`, 
+      title: newMandate.title,
+      objective: newMandate.objective,
+      status: 'active', 
+      priority: 'STRATEGIC',
+      agents: []
+    };
     setPersona(prev => ({ ...prev, mandates: [mandate, ...(prev.mandates || [])] }));
-    setNewMandate({ title: '', description: '' });
+    setNewMandate({ title: '', objective: '' });
   };
 
   return (
@@ -56,7 +62,6 @@ const PersonaForm: React.FC<PersonaFormProps> = ({ persona, setPersona, onSave }
               </div>
               <div className="space-y-4">
                 <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Reasoning Logic</label>
-                {/* Changed name from agentLogic to reasoningLogic to match the Persona interface in types.ts */}
                 <input type="text" name="reasoningLogic" value={persona.reasoningLogic} onChange={handleChange} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-6 py-4 text-sm text-white outline-none" />
               </div>
             </div>
@@ -81,6 +86,7 @@ const PersonaForm: React.FC<PersonaFormProps> = ({ persona, setPersona, onSave }
             </div>
             <div className="pt-6 border-t border-slate-900 space-y-4">
                <input type="text" placeholder="New Mandate Title..." value={newMandate.title} onChange={e => setNewMandate({...newMandate, title: e.target.value})} className="w-full bg-slate-900 border border-slate-800 rounded-xl px-6 py-3 text-[10px] text-white outline-none" />
+               <input type="text" placeholder="Objective..." value={newMandate.objective} onChange={e => setNewMandate({...newMandate, objective: e.target.value})} className="w-full bg-slate-900 border border-slate-800 rounded-xl px-6 py-3 text-[10px] text-white outline-none" />
                <button onClick={addMandate} className="w-full py-3 bg-slate-800 text-slate-400 rounded-xl text-[9px] font-bold uppercase tracking-widest hover:bg-indigo-600 hover:text-white transition-all">Add Execution Mandate</button>
             </div>
           </div>
