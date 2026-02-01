@@ -20,9 +20,9 @@ const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona }) => {
   const [progress, setProgress] = useState(0);
   const [currentFile, setCurrentFile] = useState('');
 
-  // Updated to match the user's specific project ID and Cloud Run URL pattern
+  // Updated to match the user's specific project ID and aligned service names
   const projectSuffix = "419113009106.us-central1.run.app"; 
-  const stagingUrl = `https://motokage-staging-${projectSuffix}`;
+  const stagingUrl = `https://motokage-studio-staging-${projectSuffix}`;
   const prodUrl = `https://motokage-studio-${projectSuffix}`;
 
   useEffect(() => {
@@ -32,7 +32,7 @@ const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona }) => {
   }, [repo, token, targetEnv]);
 
   const sourceFiles = [
-    'App.tsx', 'types.ts', 'index.tsx', 'metadata.json', 'index.html', 'package.json', 'vite.config.ts', 'tsconfig.json', 'cloudbuild.yaml', '.dockerignore', 'Dockerfile',
+    'App.tsx', 'types.ts', 'index.tsx', 'metadata.json', 'index.html', 'package.json', 'vite.config.ts', 'tsconfig.json', 'cloudbuild.yaml', '.dockerignore', 'Dockerfile', 'default.conf',
     'components/Header.tsx', 'components/PersonaForm.tsx', 'components/ArchitectureView.tsx',
     'components/MemoryVault.tsx', 'components/NexusView.tsx', 'components/ChatInterface.tsx',
     'components/ComparisonView.tsx', 'components/ShadowSyncConsole.tsx', 'components/StagingView.tsx',

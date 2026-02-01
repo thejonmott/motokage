@@ -31,7 +31,7 @@ steps:
             --platform managed \
             --allow-unauthenticated
         else
-          gcloud run deploy motokage-staging \
+          gcloud run deploy motokage-studio-staging \
             --image gcr.io/$PROJECT_ID/motokage-studio:$BRANCH_NAME \
             --region us-central1 \
             --platform managed \
