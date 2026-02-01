@@ -8,6 +8,7 @@ import MosaicView from './components/MosaicView';
 import MandatesView from './components/MandatesView';
 import OriginStoryView from './components/OriginStoryView';
 import DashboardView from './components/DashboardView';
+import DocumentationView from './components/DocumentationView';
 
 const STORAGE_KEY = 'motokage_studio_v2';
 
@@ -66,6 +67,7 @@ const App: React.FC = () => {
       <main className="container mx-auto px-6 py-12 max-w-7xl">
         <div key={`${accessLevel}-${activeTab}`} className="animate-in fade-in duration-500">
           {activeTab === TabType.STRATEGY && <ArchitectureView persona={persona} />}
+          {activeTab === TabType.DOCUMENTATION && <DocumentationView />}
           {activeTab === TabType.ORIGIN && <OriginStoryView persona={persona} setPersona={setPersona} accessLevel={accessLevel} />}
           {activeTab === TabType.MOSAIC && <MosaicView persona={persona} setPersona={setPersona} accessLevel={accessLevel} />}
           {activeTab === TabType.DNA && <DNAView persona={persona} setPersona={setPersona} accessLevel={accessLevel} />}
@@ -76,7 +78,7 @@ const App: React.FC = () => {
       </main>
 
       <footer className="py-12 border-t border-slate-900 text-center text-slate-600 text-[9px] font-mono uppercase tracking-[0.3em]">
-        © 2026 Motokage • Identity Stack v2.0 • {accessLevel} MODE
+        © 2026 Motokage • Open Architecture v14.3 • {accessLevel} MODE
       </footer>
     </div>
   );

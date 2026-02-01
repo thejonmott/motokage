@@ -1,5 +1,6 @@
 export enum TabType {
   STRATEGY = 'STRATEGY',
+  DOCUMENTATION = 'DOCUMENTATION',
   ORIGIN = 'ORIGIN',
   MOSAIC = 'MOSAIC',
   DNA = 'DNA',

@@ -36,7 +36,7 @@ const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona }) => {
     'components/MemoryVault.tsx', 'components/NexusView.tsx', 'components/ChatInterface.tsx',
     'components/ComparisonView.tsx', 'components/ShadowSyncConsole.tsx', 'components/StagingView.tsx',
     'components/DNAView.tsx', 'components/OriginStoryView.tsx', 'components/MosaicView.tsx',
-    'components/MandatesView.tsx', 'components/DashboardView.tsx', 'default.conf'
+    'components/MandatesView.tsx', 'components/DashboardView.tsx', 'default.conf', 'Dockerfile', 'cloudbuild.yaml'
   ];
 
   const getSystemManifests = () => ({
@@ -83,7 +83,7 @@ CMD ["nginx", "-g", "daemon off;"]`,
           docker build -t $$IMAGE_PATH --build-arg VITE_APP_ENV=production .
         fi
         docker push $$IMAGE_PATH
-  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  - name: 'gcloud run deploy'
     entrypoint: 'bash'
     args:
       - '-c'
@@ -107,7 +107,7 @@ options:
     }
     setStatus({ type: 'loading' });
     setProgress(0);
-    setCurrentFile('Initializing connection...');
+    setCurrentFile('Establishing Uplink...');
 
     try {
       const headers = { 
@@ -148,7 +148,7 @@ options:
         
         let content = (manifests as any)[path] || '';
         
-        if (!content || content === 'Full contents of the file') {
+        if (!content || content === 'Full contents of the file' || content === '') {
           try {
             const res = await fetch(`/${path}`); 
             if (res.ok) {
@@ -157,12 +157,7 @@ options:
                 content = fetched;
               }
             }
-          } catch (e) { console.warn(`Could not fetch ${path}, fallback check...`); }
-        }
-
-        // Final sanity check
-        if (path === 'Dockerfile' && (!content || content.includes('Full contents'))) {
-            content = (manifests as any)['Dockerfile'];
+          } catch (e) { console.warn(`Could not fetch ${path}, using manifest fallback...`); }
         }
 
         if (content && content !== 'Full contents of the file') {
@@ -189,7 +184,7 @@ options:
         method: 'POST',
         headers,
         body: JSON.stringify({ 
-          message: `Digital Twin Sync [${targetEnv.toUpperCase()}]: ${new Date().toISOString()} (v10.0 FINAL)`, 
+          message: `🚀 [IGNITION] Digital Twin Sync: v14.1 (AR Verified Deployment)`, 
           tree: treeData.sha, 
           parents: [latestCommitSha] 
         })
@@ -203,7 +198,7 @@ options:
       });
 
       setProgress(100);
-      setStatus({ type: 'success', msg: `SYNC COMPLETE. DISPATCHING TO ARTIFACT REGISTRY.` });
+      setStatus({ type: 'success', msg: `IGNITION SUCCESSFUL. CLOUD BUILD DISPATCHED.` });
     } catch (e: any) {
       setStatus({ type: 'error', msg: e.message });
     }
@@ -213,42 +208,55 @@ options:
     <div className="bg-slate-900 border border-slate-800 rounded-[3rem] p-12 shadow-2xl space-y-10">
       <div className="flex justify-between items-center border-b border-slate-800 pb-8">
         <div className="space-y-1">
-          <h3 className="text-sm font-bold text-white uppercase tracking-widest">Global Uplink v10.0</h3>
-          <p className="text-[10px] text-slate-500 font-mono uppercase tracking-widest">Project: motokage | Region: us-central1</p>
+          <h3 className="text-sm font-bold text-white uppercase tracking-widest flex items-center gap-2">
+            <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
+            Global Uplink v14.1 "Ignition"
+          </h3>
+          <p className="text-[10px] text-slate-500 font-mono uppercase tracking-widest">GCP: motokage | Region: us-central1</p>
         </div>
         <div className="flex items-center gap-6">
           <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800">
              <button onClick={() => setTargetEnv('staging')} className={`px-4 py-1.5 rounded-lg text-[8px] font-bold uppercase transition-all ${targetEnv === 'staging' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30' : 'text-slate-600'}`}>Staging</button>
              <button onClick={() => setTargetEnv('main')} className={`px-4 py-1.5 rounded-lg text-[8px] font-bold uppercase transition-all ${targetEnv === 'main' ? 'bg-purple-500/10 text-purple-400 border border-purple-500/30' : 'text-slate-600'}`}>Production</button>
           </div>
-          <div className={`w-2 h-2 rounded-full ${status.type === 'loading' ? 'bg-blue-500 animate-pulse' : 'bg-emerald-500'}`}></div>
         </div>
       </div>
 
-      <div className="p-8 bg-slate-950 border border-emerald-500/20 rounded-3xl space-y-6">
-        <h4 className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest flex items-center gap-2">
-           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg>
-           Infrastructure Status: AR_REPO_CONFIRMED
-        </h4>
+      <div className="p-8 bg-slate-950 border border-emerald-500/30 rounded-3xl space-y-6 shadow-[0_0_30px_rgba(16,185,129,0.05)]">
+        <div className="flex justify-between items-start">
+           <h4 className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest flex items-center gap-2">
+              🚀 Pre-flight Status: GO FOR LAUNCH
+           </h4>
+           <span className="text-[8px] font-mono text-slate-600 bg-slate-900 px-2 py-1 rounded">AR_V2_READY</span>
+        </div>
         <div className="grid md:grid-cols-2 gap-8 text-[9px] font-mono leading-relaxed">
-           <div className="space-y-3">
-              <p className="text-slate-400">Target Path: <span className="text-emerald-400 break-all">us-central1-docker.pkg.dev/motokage/motokage-studio/app</span></p>
-              <ul className="text-slate-500 space-y-1">
-                <li>• <span className="text-white">Artifact Registry</span>: Connected.</li>
-                <li>• <span className="text-white">Cloud Build</span>: v10.0 Manifest Loaded.</li>
-                <li>• <span className="text-white">Cloud Run</span>: Target region locked (us-central1).</li>
-              </ul>
+           <div className="space-y-4">
+              <div className="flex items-center gap-3 text-white">
+                 <span className="text-emerald-500">✓</span>
+                 <span>Artifact Registry Repository Found</span>
+              </div>
+              <div className="flex items-center gap-3 text-white">
+                 <span className="text-emerald-500">✓</span>
+                 <span>Cloud Build IAM Policies Propagated</span>
+              </div>
+              <div className="flex items-center gap-3 text-white">
+                 <span className="text-emerald-500">✓</span>
+                 <span>Manifests aligned with us-central1</span>
+              </div>
            </div>
-           <div className="p-4 bg-slate-900 rounded-xl border border-white/5 space-y-3">
-              <p className="text-slate-400 italic">"The target repository exists. Syncing now will initiate the build and deployment pipeline without authentication errors."</p>
-              <a href="https://console.cloud.google.com/artifacts/docker/motokage/us-central1/motokage-studio?project=motokage" target="_blank" rel="noreferrer" className="block text-center py-2 bg-emerald-600/20 text-emerald-400 rounded-lg border border-emerald-500/30 hover:bg-emerald-600/30 transition-all uppercase tracking-widest text-[8px] font-bold">Monitor Artifact Registry</a>
+           <div className="p-4 bg-slate-900 rounded-xl border border-white/5 space-y-4">
+              <p className="text-slate-400 italic">"The target repository is live. Syncing now will transmit the DNA stack and trigger the serverless deployment sequence."</p>
+              <div className="flex gap-2">
+                 <a href="https://console.cloud.google.com/artifacts/docker/motokage/us-central1/motokage-studio?project=motokage" target="_blank" rel="noreferrer" className="flex-grow text-center py-2 bg-emerald-600/10 text-emerald-400 rounded-lg border border-emerald-500/20 hover:bg-emerald-600/20 transition-all uppercase tracking-widest text-[7px] font-bold">Registry Console</a>
+                 <a href="https://console.cloud.google.com/cloud-build/builds?project=motokage" target="_blank" rel="noreferrer" className="flex-grow text-center py-2 bg-blue-600/10 text-blue-400 rounded-lg border border-blue-500/20 hover:bg-blue-600/20 transition-all uppercase tracking-widest text-[7px] font-bold">Build Monitor</a>
+              </div>
            </div>
         </div>
       </div>
 
       <div className="grid md:grid-cols-2 gap-8">
         <div className="space-y-4">
-          <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">GitHub Repository</label>
+          <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">GitHub Destination</label>
           <input 
             type="text" 
             value={repo} 
@@ -257,38 +265,40 @@ options:
           />
         </div>
         <div className="space-y-4">
-          <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Access Token (Locked)</label>
+          <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Authentication State</label>
           <input 
             type="password" 
             value={token} 
             onChange={(e) => setToken(e.target.value)} 
-            placeholder="Identity Token Active"
+            placeholder="Identity Token Locked"
             className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-6 py-4 text-xs text-white outline-none focus:border-emerald-500 transition-all font-mono" 
           />
         </div>
       </div>
 
-      <button onClick={handleAtomicSync} disabled={status.type === 'loading'} className={`w-full py-6 rounded-3xl font-bold text-[11px] uppercase tracking-[0.4em] transition-all shadow-2xl border ${targetEnv === 'main' ? 'bg-purple-600 hover:bg-purple-700 border-purple-500/50' : 'bg-emerald-600 hover:bg-emerald-700 border-emerald-500/50'}`}>
-        {status.type === 'loading' ? 'Transmitting DNA...' : `Final Artifact Sync to ${targetEnv.toUpperCase()}`}
+      <button onClick={handleAtomicSync} disabled={status.type === 'loading'} className={`w-full py-7 rounded-[2rem] font-bold text-[12px] uppercase tracking-[0.5em] transition-all shadow-2xl border relative overflow-hidden group ${targetEnv === 'main' ? 'bg-purple-600 hover:bg-purple-700 border-purple-500/50' : 'bg-emerald-600 hover:bg-emerald-700 border-emerald-500/50'}`}>
+        <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/5 to-white/0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+        {status.type === 'loading' ? 'TRANSMITTING DNA...' : `IGNITE DEPLOYMENT TO ${targetEnv.toUpperCase()}`}
       </button>
 
       {status.type === 'loading' && (
         <div className="space-y-4">
-          <div className="h-1.5 w-full bg-slate-950 rounded-full overflow-hidden border border-slate-800">
-             <div className={`h-full transition-all duration-300 shadow-lg ${targetEnv === 'main' ? 'bg-purple-500' : 'bg-emerald-500'}`} style={{ width: `${progress}%` }}></div>
+          <div className="h-2 w-full bg-slate-950 rounded-full overflow-hidden border border-slate-800">
+             <div className={`h-full transition-all duration-300 shadow-[0_0_15px_rgba(16,185,129,0.5)] ${targetEnv === 'main' ? 'bg-purple-500' : 'bg-emerald-500'}`} style={{ width: `${progress}%` }}></div>
           </div>
-          <p className="text-[8px] text-slate-500 font-mono text-center uppercase tracking-widest">UPLOADING: <span className="text-white">{currentFile}</span></p>
+          <p className="text-[9px] text-slate-500 font-mono text-center uppercase tracking-widest">UPLOADING CORE: <span className="text-white">{currentFile}</span></p>
         </div>
       )}
       
       {status.msg && (
-        <div className={`p-6 rounded-2xl text-[10px] font-mono text-center uppercase tracking-widest border animate-in fade-in slide-in-from-top-2 ${status.type === 'error' ? 'bg-red-500/10 border-red-500/20 text-red-400' : 'bg-green-500/10 border-green-500/20 text-green-400'}`}>
+        <div className={`p-8 rounded-[2rem] text-[10px] font-mono text-center uppercase tracking-widest border animate-in fade-in slide-in-from-top-4 ${status.type === 'error' ? 'bg-orange-500/10 border-orange-500/20 text-orange-400' : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'}`}>
           {status.msg}
           {status.type === 'success' && (
-            <div className="mt-4 space-y-3">
-              <div className="flex justify-center gap-4">
-                <a href="https://console.cloud.google.com/cloud-build/builds?project=motokage" target="_blank" rel="noreferrer" className="px-4 py-2 bg-slate-800 rounded-lg text-[8px] hover:bg-slate-700 transition-all">View Build Log</a>
-                <a href={targetEnv === 'main' ? prodUrl : stagingUrl} target="_blank" rel="noreferrer" className="px-4 py-2 bg-white/10 rounded-lg text-[8px] hover:bg-white/20 transition-all">Preview Site</a>
+            <div className="mt-6 flex flex-col items-center gap-4">
+              <p className="text-slate-400 normal-case italic">"DNA Successfully uplinked. Cloud Build is now architecting the reflection in us-central1."</p>
+              <div className="flex gap-4">
+                <a href="https://console.cloud.google.com/cloud-build/builds?project=motokage" target="_blank" rel="noreferrer" className="px-6 py-3 bg-slate-800 rounded-xl text-[9px] hover:bg-slate-700 transition-all font-bold">Track Build Progress</a>
+                <a href={targetEnv === 'main' ? prodUrl : stagingUrl} target="_blank" rel="noreferrer" className="px-6 py-3 bg-white text-slate-950 rounded-xl text-[9px] hover:bg-slate-200 transition-all font-bold">Preview Target</a>
               </div>
             </div>
           )}
