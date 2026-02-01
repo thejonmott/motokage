@@ -13,14 +13,13 @@ const toBase64 = (str: string) => {
 };
 
 const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona }) => {
-  const [repo, setRepo] = useState(localStorage.getItem('motokage_repo') || '');
+  const [repo, setRepo] = useState(localStorage.getItem('motokage_repo') || 'thejonmott/motokage');
   const [token, setToken] = useState(localStorage.getItem('motokage_token') || '');
   const [targetEnv, setTargetEnv] = useState<'staging' | 'main'>(localStorage.getItem('motokage_env') as any || 'staging');
   const [status, setStatus] = useState<{ type: 'idle' | 'loading' | 'success' | 'error', msg?: string }>({ type: 'idle' });
   const [progress, setProgress] = useState(0);
   const [currentFile, setCurrentFile] = useState('');
 
-  // Suffix from your working production URL
   const projectSuffix = "419113009106.us-central1.run.app"; 
   const stagingUrl = `https://motokage-studio-staging-${projectSuffix}`;
   const prodUrl = `https://motokage-studio-${projectSuffix}`;
@@ -142,7 +141,7 @@ const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona }) => {
     <div className="bg-slate-900 border border-slate-800 rounded-[3rem] p-12 shadow-2xl space-y-10">
       <div className="flex justify-between items-center border-b border-slate-800 pb-8">
         <div className="space-y-1">
-          <h3 className="text-sm font-bold text-white uppercase tracking-widest">Global Uplink v5.8</h3>
+          <h3 className="text-sm font-bold text-white uppercase tracking-widest">Global Uplink v6.0</h3>
           <p className="text-[10px] text-slate-500 font-mono uppercase tracking-widest">GCP Project: motokage</p>
         </div>
         <div className="flex items-center gap-6">
@@ -166,12 +165,12 @@ const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona }) => {
           />
         </div>
         <div className="space-y-4">
-          <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Personal Access Token</label>
+          <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Personal Access Token (PAT)</label>
           <input 
             type="password" 
             value={token} 
             onChange={(e) => setToken(e.target.value)} 
-            placeholder="ghp_xxxxxxxxxxxx"
+            placeholder="Paste gh_token here..."
             className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-6 py-4 text-xs text-white outline-none focus:border-indigo-500 transition-all font-mono" 
           />
         </div>
@@ -189,11 +188,11 @@ const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona }) => {
         </div>
 
         <div className="p-8 bg-slate-950 border border-slate-800 rounded-3xl space-y-4">
-           <h4 className="text-[9px] font-bold text-white uppercase tracking-widest flex items-center gap-2">Troubleshooting</h4>
+           <h4 className="text-[9px] font-bold text-white uppercase tracking-widest flex items-center gap-2">Setup Checklist</h4>
            <div className="space-y-1">
-             <p className="text-[9px] text-slate-500 font-mono leading-relaxed uppercase">1. Click Sync to STAGING</p>
-             <p className="text-[9px] text-slate-500 font-mono leading-relaxed uppercase">2. Check "Cloud Build" Triggers</p>
-             <p className="text-[9px] text-slate-500 font-mono leading-relaxed uppercase">3. Wait for Build Completion</p>
+             <p className="text-[9px] text-slate-300 font-mono leading-relaxed uppercase">1. Create 'staging' branch trigger</p>
+             <p className="text-[9px] text-slate-500 font-mono leading-relaxed uppercase">2. Change Triggers to "cloudbuild.yaml"</p>
+             <p className="text-[9px] text-slate-500 font-mono leading-relaxed uppercase">3. Sync and monitor Cloud Build logs</p>
            </div>
         </div>
       </div>
