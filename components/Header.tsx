@@ -101,7 +101,7 @@ const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, accessLevel, s
                 <span className={`w-1 h-1 rounded-full animate-pulse ${hasKey ? 'bg-emerald-500 shadow-[0_0_5px_rgba(16,185,129,0.8)]' : 'bg-rose-500 animate-none'}`}></span>
                 <span className="text-[7px] font-mono text-slate-500 tracking-widest uppercase">Uplink: {hasKey ? 'NOMINAL' : 'OFFLINE'}</span>
               </div>
-              <span className="text-[7px] font-mono text-slate-600 tracking-widest uppercase">v15.4-STABLE • us-central1</span>
+              <span className="text-[7px] font-mono text-slate-600 tracking-widest uppercase">v15.6-STABLE • us-central1</span>
             </div>
           </div>
         </div>

@@ -24,8 +24,8 @@ const MemoryVault: React.FC<MemoryVaultProps> = ({ persona, setPersona, accessLe
     if (accessLevel !== 'CORE') return;
     setIsSynthesizing(true);
     try {
-      // Always initialize with API key from environment for fresh access
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+      // Always initialize with API key from process.env.API_KEY exclusively
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       const prompt = `Synthesize these artifacts into the MOSAIC of Jonathan Mott.
       Focus on professional strategic artifacts and evidence.
       Content to synthesize: ${content}`;
@@ -64,7 +64,7 @@ const MemoryVault: React.FC<MemoryVaultProps> = ({ persona, setPersona, accessLe
         } 
       });
 
-      // Safely access .text property with optional chaining to prevent build errors
+      // Safely access .text property directly
       const jsonStr = response.text?.trim() || '{}';
       const result = JSON.parse(jsonStr);
       if (result.newShards) {

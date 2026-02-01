@@ -18,7 +18,7 @@ const INITIAL_PERSONA: Persona = {
   profession: 'AI Product Strategist',
   tone: 'Mission-Driven Visionary',
   coreValues: ['Family Provision', 'Global Impact', 'Human Potential'],
-  bio: 'A digital twin built to scale strategic judgment.',
+  bio: 'A digital twin built to scale strategic judgment. Cloud-native and architected for high-fidelity professional reflection.',
   reasoningLogic: 'Reflective Alignment Loop',
   memoryShards: [],
   mandates: [
@@ -40,7 +40,8 @@ const INITIAL_PERSONA: Persona = {
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>(TabType.STRATEGY);
   const [accessLevel, setAccessLevel] = useState<AccessLevel>('AMBASSADOR');
-  const [hasKey, setHasKey] = useState<boolean>(false);
+  // Initialize hasKey based on the environment variable presence
+  const [hasKey, setHasKey] = useState<boolean>(!!process.env.API_KEY);
   const [persona, setPersona] = useState<Persona>(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     return saved ? JSON.parse(saved) : INITIAL_PERSONA;
@@ -48,25 +49,27 @@ const App: React.FC = () => {
 
   const [messages, setMessages] = useState<Message[]>([]);
 
-  // API Key Selection Handshake
   useEffect(() => {
-    const checkKey = async () => {
+    const checkKeyStatus = async () => {
+      // If we have an env key, we are good
+      if (process.env.API_KEY) {
+        setHasKey(true);
+        return;
+      }
+
+      // Fallback for local AI Studio testing environments
       try {
         if (window.aistudio && typeof window.aistudio.hasSelectedApiKey === 'function') {
           const selected = await window.aistudio.hasSelectedApiKey();
           setHasKey(selected);
-        } else {
-          setHasKey(!!process.env.API_KEY);
         }
       } catch (err) {
-        console.warn("Key status check failed:", err);
-        setHasKey(!!process.env.API_KEY);
+        console.warn("Environmental key detection failure:", err);
       }
     };
-    checkKey();
     
-    // Polling interval to check if key was selected in background
-    const interval = setInterval(checkKey, 5000);
+    checkKeyStatus();
+    const interval = setInterval(checkKeyStatus, 10000);
     return () => clearInterval(interval);
   }, []);
 
@@ -74,10 +77,10 @@ const App: React.FC = () => {
     try {
       if (window.aistudio && typeof window.aistudio.openSelectKey === 'function') {
         await window.aistudio.openSelectKey();
-        setHasKey(true); // Proceed immediately per guidelines
+        setHasKey(true);
       }
     } catch (err) {
-      console.error("Failed to open key picker:", err);
+      console.error("Manual key picker failed:", err);
     }
   };
 
@@ -132,7 +135,7 @@ const App: React.FC = () => {
       </main>
 
       <footer className="py-12 border-t border-slate-900 text-center text-slate-600 text-[9px] font-mono uppercase tracking-[0.3em]">
-        © 2026 Motokage • Open Architecture v15.4-STABLE • {accessLevel} MODE
+        © 2026 Motokage • Open Architecture v15.6-STABLE • {accessLevel} MODE
       </footer>
     </div>
   );

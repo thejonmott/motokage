@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Persona, Message, MemoryShard, AccessLevel } from '../types';
 import { GoogleGenAI } from '@google/genai';
@@ -21,6 +22,7 @@ const StagingView: React.FC<StagingViewProps> = ({ persona, setPersona, accessLe
     setIsLoading(true); setInput('');
     setTestLog(prev => [...prev, { role: 'user', text: query, timestamp: new Date() }]);
     try {
+      // Always initialize with process.env.API_KEY directly
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       const response = await ai.models.generateContent({
         model: 'gemini-3-pro-preview',

@@ -32,8 +32,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
   ];
 
   const handleSend = async (query: string) => {
-    // Only proceed if we have a key (via env var or manual selection)
-    if (!query.trim() || isLoading || !hasKey) return;
+    // Rely exclusively on process.env.API_KEY as per core deployment instructions
+    if (!query.trim() || isLoading || !process.env.API_KEY) return;
 
     const currentInput = query;
     const userMessage: Message = { role: 'user', text: currentInput, timestamp: new Date() };
@@ -45,8 +45,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
     setActiveSubLog('Accessing DNA Memory...');
 
     try {
-      // Initialize a fresh instance to ensure the latest API key from context is used
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       
       const history = messages.map(m => ({
         role: m.role,
@@ -96,15 +95,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
     } catch (error: any) {
       console.error("Cognitive Uplink Failure:", error);
       
-      // Handle the case where the key is invalid or permissions were revoked
-      if (error.message?.includes("Requested entity was not found") || error.message?.includes("403")) {
-        setActiveSubLog('Identity Sync Error. Resetting protocol...');
-        onResetKey();
-      }
-
       setMessages(prev => [...prev, { 
         role: 'model', 
-        text: `[UPLINK_FAILURE]: ${error.message || 'The cognitive relay timed out. Check billing status.'}`, 
+        text: `[UPLINK_FAILURE]: ${error.message || 'The cognitive relay timed out.'}`, 
         timestamp: new Date() 
       }]);
     } finally {
@@ -113,59 +106,19 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
     }
   };
 
-  // The Handshake screen is the landing for users without an active key/uplink
-  if (!hasKey) {
-    return (
-      <div className="flex flex-col items-center justify-center h-[70vh] max-w-2xl mx-auto text-center space-y-10 animate-in fade-in zoom-in-95 duration-700">
-        <div className="relative">
-          <div className="absolute inset-0 bg-indigo-500 rounded-full blur-[60px] opacity-20 animate-pulse"></div>
-          <div className="w-28 h-28 rounded-[2rem] bg-slate-900 border border-indigo-500/30 flex items-center justify-center text-5xl shadow-2xl relative z-10 italic font-bold text-white transition-transform hover:scale-110 duration-500">
-             影
+  // If absolutely no API key is detected in the environment, show a subtle warning for the admin
+  if (!process.env.API_KEY && !hasKey) {
+     return (
+       <div className="flex flex-col items-center justify-center h-[70vh] max-w-2xl mx-auto text-center space-y-8 animate-in fade-in">
+          <div className="w-20 h-20 rounded-full border border-rose-500/20 flex items-center justify-center text-rose-500 text-3xl">!</div>
+          <div className="space-y-4">
+             <h2 className="text-2xl font-bold font-heading text-white tracking-tight">System Offline</h2>
+             <p className="text-slate-500 text-xs font-mono uppercase tracking-widest leading-relaxed">
+                The API key environment variable (process.env.API_KEY) is missing. This twin requires a server-side configuration to ignite for public visitors.
+             </p>
           </div>
-        </div>
-        
-        <div className="space-y-4">
-          <h2 className="text-4xl font-bold font-heading text-white tracking-tight">Handshake Required</h2>
-          <p className="text-slate-400 text-sm font-mono uppercase tracking-[0.2em] leading-relaxed max-w-lg">
-            To activate <span className="text-indigo-400">Gemini 3 Pro</span> reasoning, Motokage requires a billing-enabled Studio API Key.
-          </p>
-          <div className="p-6 bg-slate-900/50 border border-slate-800 rounded-2xl text-[10px] text-slate-500 font-mono uppercase leading-relaxed text-left max-w-md">
-            <span className="text-amber-500 font-bold">NOTE:</span> A consumer "Gemini Advanced" subscription does not cover API developer usage. You must select a key from a paid GCP project to bypass free-tier limitations.
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-5 w-full">
-           <button 
-             onClick={onConnectKey}
-             className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-6 rounded-3xl font-bold text-xs uppercase tracking-[0.4em] transition-all shadow-2xl shadow-indigo-600/20 group relative overflow-hidden"
-           >
-             <span className="relative z-10">Establish Cognitive Uplink</span>
-             <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/10 to-white/0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
-           </button>
-           
-           <div className="flex justify-center gap-8">
-             <a 
-               href="https://ai.google.dev/gemini-api/docs/billing" 
-               target="_blank" 
-               rel="noreferrer" 
-               className="text-[9px] text-slate-600 uppercase tracking-widest hover:text-indigo-400 transition-colors flex items-center gap-2"
-             >
-               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2 2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/></svg>
-               Billing Documentation
-             </a>
-             <a 
-               href="https://aistudio.google.com/app/apikey" 
-               target="_blank" 
-               rel="noreferrer" 
-               className="text-[9px] text-slate-600 uppercase tracking-widest hover:text-indigo-400 transition-colors flex items-center gap-2"
-             >
-               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-               Studio Key Console
-             </a>
-           </div>
-        </div>
-      </div>
-    );
+       </div>
+     );
   }
 
   return (
@@ -209,12 +162,14 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
           </p>
         </div>
 
-        <button 
-          onClick={onResetKey}
-          className="w-full py-3 bg-slate-900 border border-slate-800 rounded-2xl text-[7px] font-mono text-slate-600 uppercase tracking-widest hover:text-indigo-400 hover:border-indigo-500/30 transition-all"
-        >
-          Reset Protocol Key
-        </button>
+        {accessLevel === 'CORE' && (
+          <button 
+            onClick={onResetKey}
+            className="w-full py-3 bg-slate-900 border border-slate-800 rounded-2xl text-[7px] font-mono text-slate-600 uppercase tracking-widest hover:text-indigo-400 hover:border-indigo-500/30 transition-all"
+          >
+            Reset Protocol Key
+          </button>
+        )}
       </div>
 
       {/* Chat Area */}
@@ -297,7 +252,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
              <span className="flex items-center gap-1"><span className="w-1 h-1 bg-emerald-500 rounded-full"></span> Tier: PAY-AS-YOU-GO</span>
            </div>
            <div className="text-center md:text-right italic opacity-50">
-             Session ID: {Math.random().toString(36).substring(7).toUpperCase()} • v15.4-STABLE
+             Session ID: {Math.random().toString(36).substring(7).toUpperCase()} • v15.6-STABLE
            </div>
         </div>
 

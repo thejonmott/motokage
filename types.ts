@@ -68,15 +68,19 @@ export interface Message {
   timestamp: Date;
 }
 
-// Interface for the AI Studio API key management utility provided by the environment
-export interface AIStudio {
-  hasSelectedApiKey: () => Promise<boolean>;
-  openSelectKey: () => Promise<void>;
-}
-
+// Global scope augmentation for environment-provided objects to resolve conflicts
 declare global {
+  /**
+   * Interface for the AI Studio API key management utility provided by the environment.
+   * Defined here to ensure identity with the global object's type across potential multiple declarations.
+   */
+  interface AIStudio {
+    hasSelectedApiKey: () => Promise<boolean>;
+    openSelectKey: () => Promise<void>;
+  }
+
   interface Window {
-    // Property declaration for aistudio utility with matching AIStudio type and readonly modifier to align with global definitions
+    // Restored readonly modifier and used the global AIStudio interface to match the environment's definition
     readonly aistudio: AIStudio;
   }
 }
