@@ -20,7 +20,7 @@ const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona }) => {
   const [progress, setProgress] = useState(0);
   const [currentFile, setCurrentFile] = useState('');
 
-  // Updated to match the user's specific project ID and aligned service names
+  // The project identifier from your URL
   const projectSuffix = "419113009106.us-central1.run.app"; 
   const stagingUrl = `https://motokage-studio-staging-${projectSuffix}`;
   const prodUrl = `https://motokage-studio-${projectSuffix}`;
@@ -31,6 +31,7 @@ const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona }) => {
     localStorage.setItem('motokage_env', targetEnv);
   }, [repo, token, targetEnv]);
 
+  // Ensure ALL infrastructure files are synced
   const sourceFiles = [
     'App.tsx', 'types.ts', 'index.tsx', 'metadata.json', 'index.html', 'package.json', 'vite.config.ts', 'tsconfig.json', 'cloudbuild.yaml', '.dockerignore', 'Dockerfile', 'default.conf',
     'components/Header.tsx', 'components/PersonaForm.tsx', 'components/ArchitectureView.tsx',
@@ -132,7 +133,7 @@ const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona }) => {
       });
 
       setProgress(100);
-      setStatus({ type: 'success', msg: `${targetEnv === 'main' ? 'PRODUCTION' : 'STAGING'} Sync Complete. Build Initialized.` });
+      setStatus({ type: 'success', msg: `${targetEnv === 'main' ? 'PRODUCTION' : 'STAGING'} Sync Complete. Cloud Build triggered.` });
     } catch (e: any) {
       setStatus({ type: 'error', msg: e.message });
     }
@@ -159,8 +160,8 @@ const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona }) => {
     <div className="bg-slate-900 border border-slate-800 rounded-[3rem] p-12 shadow-2xl space-y-10">
       <div className="flex justify-between items-center border-b border-slate-800 pb-8">
         <div className="space-y-1">
-          <h3 className="text-sm font-bold text-white uppercase tracking-widest">Global Uplink v5.2</h3>
-          <p className="text-[10px] text-slate-500 font-mono uppercase">Multi-Environment Control</p>
+          <h3 className="text-sm font-bold text-white uppercase tracking-widest">Global Uplink v5.5</h3>
+          <p className="text-[10px] text-slate-500 font-mono uppercase tracking-widest">GCP Project: motokage</p>
         </div>
         <div className="flex items-center gap-6">
           <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800">
@@ -186,7 +187,7 @@ const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona }) => {
         <div className="p-8 bg-slate-950 border border-slate-800 rounded-3xl space-y-4">
            <h4 className="text-[9px] font-bold text-white uppercase tracking-widest flex items-center gap-2">Target: {targetEnv.toUpperCase()}</h4>
            <div className="space-y-2">
-             <p className="text-[10px] text-slate-500 font-mono leading-relaxed uppercase tracking-wider italic">Expected Endpoint:</p>
+             <p className="text-[10px] text-slate-500 font-mono leading-relaxed uppercase tracking-wider italic">GCP Endpoint:</p>
              <a href={targetEnv === 'main' ? prodUrl : stagingUrl} target="_blank" rel="noreferrer" className="text-[10px] text-blue-400 font-mono hover:underline truncate block">
                {targetEnv === 'main' ? prodUrl : stagingUrl}
              </a>
@@ -194,17 +195,17 @@ const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona }) => {
         </div>
 
         <div className="p-8 bg-slate-950 border border-slate-800 rounded-3xl space-y-4">
-           <h4 className="text-[9px] font-bold text-white uppercase tracking-widest flex items-center gap-2">Health & Status</h4>
+           <h4 className="text-[9px] font-bold text-white uppercase tracking-widest flex items-center gap-2">Build Health</h4>
            <div className="flex items-center gap-3">
              <span className={`w-2 h-2 rounded-full ${status.type === 'success' ? 'bg-green-500' : 'bg-slate-700'}`}></span>
-             <span className="text-[10px] text-slate-500 font-mono uppercase tracking-widest">{status.type === 'loading' ? 'Syncing...' : 'System Ready'}</span>
+             <span className="text-[10px] text-slate-500 font-mono uppercase tracking-widest">{status.type === 'loading' ? 'Transmitting...' : 'Uplink Stable'}</span>
            </div>
         </div>
       </div>
 
       <div className="flex flex-col md:flex-row gap-4">
         <button onClick={handleAtomicSync} disabled={status.type === 'loading'} className={`flex-grow py-6 rounded-3xl font-bold text-[11px] uppercase tracking-[0.4em] transition-all shadow-2xl relative overflow-hidden group border ${targetEnv === 'main' ? 'bg-purple-600 hover:bg-purple-700 border-purple-500/50' : 'bg-amber-600 hover:bg-amber-700 border-amber-500/50'}`}>
-          {status.type === 'loading' ? 'Encrypting & Syncing...' : `Sync to ${targetEnv.toUpperCase()}`}
+          {status.type === 'loading' ? 'Executing Multi-Stage Build...' : `Sync to ${targetEnv.toUpperCase()}`}
         </button>
 
         {targetEnv === 'staging' && (
@@ -219,7 +220,7 @@ const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona }) => {
           <div className="h-1.5 w-full bg-slate-950 rounded-full overflow-hidden border border-slate-800">
              <div className={`h-full transition-all duration-300 shadow-lg ${targetEnv === 'main' ? 'bg-purple-500' : 'bg-amber-500'}`} style={{ width: `${progress}%` }}></div>
           </div>
-          <p className="text-[8px] text-slate-500 font-mono text-center uppercase tracking-widest">TRANSMITTING: <span className="text-white">{currentFile}</span></p>
+          <p className="text-[8px] text-slate-500 font-mono text-center uppercase tracking-widest">UPLOADING INFRASTRUCTURE: <span className="text-white">{currentFile}</span></p>
         </div>
       )}
       
@@ -227,7 +228,8 @@ const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona }) => {
         <div className={`p-6 rounded-2xl text-[10px] font-mono text-center uppercase tracking-widest border animate-in fade-in slide-in-from-top-2 ${status.type === 'error' ? 'bg-red-500/10 border-red-500/20 text-red-400' : 'bg-green-500/10 border-green-500/20 text-green-400'}`}>
           {status.msg}
           {status.type === 'success' && (
-            <div className="mt-4">
+            <div className="mt-4 space-y-2">
+              <p className="text-[8px] text-slate-500">Wait ~2-3 minutes for the Google Cloud Build to complete before launching.</p>
               <a href={targetEnv === 'main' ? prodUrl : stagingUrl} target="_blank" rel="noreferrer" className="inline-block px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-[8px] hover:bg-white/10 transition-all">Launch Deployment</a>
             </div>
           )}
