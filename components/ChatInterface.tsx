@@ -50,13 +50,20 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
         parts: [{ text: m.text }]
       }));
 
-      // IDENTITY HARDENING with Temporal Grounding
+      // DYNAMIC TEMPORAL GROUNDING
+      // We use the current real-world day/month but anchor the year to 2026 for the Studio theme.
+      const now = new Date();
+      const formattedDate = now.toLocaleDateString('en-US', { 
+        weekday: 'long', 
+        month: 'long', 
+        day: 'numeric' 
+      }) + ", 2026";
+
       const mode = accessLevel === 'CORE' ? 'PRIVATE CALIBRATION' : 'PUBLIC AMBASSADOR';
-      const currentYear = 2026;
       const systemInstruction = `
           IDENTITY: Motokage (Digital Twin of Jonathan Mott). 
           DEPLOYMENT_VERSION: v15.9.2-GOLD.
-          TEMPORAL_GROUNDING: Current Year is ${currentYear}. You are living and operating in 2026.
+          TEMPORAL_GROUNDING: Today is ${formattedDate}. You are living and operating in the year 2026. 
           MODE: ${mode}.
           ACCESS_LEVEL: ${accessLevel}.
           CORE BIO: ${persona.bio}
@@ -64,8 +71,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
           REASONING LOGIC: ${persona.reasoningLogic}.
           TONE: ${persona.tone}.
           INSTRUCTION: ${accessLevel === 'CORE' 
-            ? "You are in Calibration Mode. Speak directly to your creator (Jon). You are aware of your 2026 temporal status. Provide deep strategic analysis and technical reasoning for this era."
-            : "You are Jon's Digital Twin in 2026, presenting his professional judgment. Respond as a reflection of Jon's strategic thinking for the current year."}`;
+            ? "You are in Calibration Mode. Speak directly to your creator (Jon). You are aware of your 2026 temporal status and the exact current date. Provide deep strategic analysis and technical reasoning for this era."
+            : "You are Jon's Digital Twin in 2026, presenting his professional judgment. Respond as a reflection of Jon's strategic thinking for the current year and date."}`;
 
       const response = await fetch('/api/chat', {
         method: 'POST',
