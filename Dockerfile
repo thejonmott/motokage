@@ -2,7 +2,9 @@
 FROM node:20-alpine AS build
 WORKDIR /app
 ARG VITE_APP_ENV
+ARG API_KEY
 ENV VITE_APP_ENV=$VITE_APP_ENV
+ENV API_KEY=$API_KEY
 COPY package*.json ./
 RUN npm install
 COPY . .

@@ -17,6 +17,7 @@ interface ChatInterfaceProps {
 const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, messages, setMessages, accessLevel, hasKey, onConnectKey, onResetKey }) => {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isVerifyingLink, setIsVerifyingLink] = useState(true);
   const [streamingText, setStreamingText] = useState('');
   const [activeSubLog, setActiveSubLog] = useState<string>('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -31,8 +32,13 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
     "Explain the 'Reflective Alignment Loop'."
   ];
 
+  useEffect(() => {
+    // Initial connection pulse
+    const timer = setTimeout(() => setIsVerifyingLink(false), 2000);
+    return () => clearTimeout(timer);
+  }, []);
+
   const handleSend = async (query: string) => {
-    // Only proceed if we have a valid query and are not already loading
     if (!query.trim() || isLoading) return;
 
     const currentInput = query;
@@ -45,12 +51,14 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
     setActiveSubLog('Accessing DNA Memory...');
 
     try {
-      // In v15.7, we attempt to initialize with the system variable directly
-      if (!process.env.API_KEY) {
-        throw new Error("COGNITIVE_RELAY_ABSENT: The system's environment variable is not propagating to this session.");
+      // Prioritize the built-in process.env.API_KEY (v15.8 injection)
+      const activeKey = process.env.API_KEY;
+      
+      if (!activeKey) {
+        throw new Error("NEURAL_SYNC_TIMEOUT: No server-side API key detected in this bundle. Please verify your Cloud Build 'define' configuration.");
       }
 
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const ai = new GoogleGenAI({ apiKey: activeKey });
       
       const history = messages.map(m => ({
         role: m.role,
@@ -101,10 +109,10 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
       console.error("Cognitive Uplink Failure:", error);
       
       let errorMsg = "The digital reflection is momentarily out of sync. Please check the system telemetry.";
-      if (error.message?.includes("COGNITIVE_RELAY_ABSENT")) {
-        errorMsg = "[SYSTEM_ADVISORY]: The API_KEY environment variable is not currently accessible to the browser client. Ensure your Cloud Run build is injecting the variable for public visitors.";
-      } else if (error.message?.includes("403") || error.message?.includes("API_KEY_INVALID")) {
-        errorMsg = "[SYSTEM_ADVISORY]: The provisioned API key has expired or lacks the necessary permissions for Gemini 3 Pro reasoning.";
+      if (error.message?.includes("NEURAL_SYNC_TIMEOUT")) {
+        errorMsg = "[SYSTEM_ADVISORY]: The provisioned API key is missing from the build. Visitors cannot chat until the key is injected via vite.config.ts during deployment.";
+      } else if (error.message?.includes("403")) {
+        errorMsg = "[SYSTEM_ADVISORY]: Authentication failure. The baked-in API key may have expired or lacks permissions.";
       }
 
       setMessages(prev => [...prev, { 
@@ -130,15 +138,15 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
               alt="Jonathan Mott" 
               className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-1000 opacity-80 group-hover:opacity-100 scale-105"
             />
-            {isLoading && (
+            {(isLoading || isVerifyingLink) && (
               <div className="absolute inset-0 z-20 overflow-hidden pointer-events-none">
                  <div className="w-full h-[2px] bg-indigo-500/50 shadow-[0_0_15px_indigo] absolute top-0 animate-[scan_2s_ease-in-out_infinite]"></div>
               </div>
             )}
             <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent opacity-60"></div>
             <div className="absolute top-4 left-4 flex gap-1 items-center bg-slate-950/80 backdrop-blur px-2 py-1 rounded-md border border-white/5">
-              <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(16,185,129,1)]"></span>
-              <span className="text-[7px] font-mono text-white/70 uppercase tracking-widest">Uplink Nominal</span>
+              <span className={`w-1.5 h-1.5 rounded-full animate-pulse shadow-[0_0_8px_rgba(16,185,129,1)] ${isVerifyingLink ? 'bg-amber-500' : 'bg-emerald-500'}`}></span>
+              <span className="text-[7px] font-mono text-white/70 uppercase tracking-widest">{isVerifyingLink ? 'Syncing...' : 'Uplink Nominal'}</span>
             </div>
             <div className="absolute bottom-6 left-6 right-6 text-left">
               <div className="text-white text-lg font-bold font-heading tracking-tight leading-none mb-1 uppercase">Jonathan Mott</div>
@@ -176,7 +184,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
             <div className="w-12 h-12 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center text-2xl font-bold text-white shadow-xl italic">影</div>
             <div className="text-left">
               <div className="text-base font-bold text-white uppercase tracking-widest">Motokage <span className="text-slate-500 font-light">| Synthesis</span></div>
-              <div className="text-[8px] text-slate-500 font-mono uppercase tracking-[0.3em]">Ambassador Protocol Active</div>
+              <div className="text-[8px] text-slate-500 font-mono uppercase tracking-[0.3em]">{isVerifyingLink ? 'Establishing Neural Connection...' : 'Ambassador Protocol Active'}</div>
             </div>
           </div>
           <div className="hidden md:flex items-center gap-4">
@@ -241,15 +249,14 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Guardrail Policy Bar */}
         <div className="px-12 py-4 bg-slate-900/30 border-t border-slate-900 flex flex-col md:flex-row justify-between items-center text-[7px] font-mono text-slate-600 uppercase tracking-widest gap-4">
            <div className="flex gap-4">
              <span className="flex items-center gap-1"><span className="w-1 h-1 bg-emerald-500 rounded-full"></span> NSFW Filter: ACTIVE</span>
              <span className="flex items-center gap-1"><span className="w-1 h-1 bg-emerald-500 rounded-full"></span> DNA Guard: ENFORCED</span>
-             <span className="flex items-center gap-1"><span className="w-1 h-1 bg-emerald-500 rounded-full"></span> Tier: PAY-AS-YOU-GO</span>
+             <span className="flex items-center gap-1"><span className="w-1 h-1 bg-emerald-500 rounded-full"></span> Tier: PRO_RANK</span>
            </div>
            <div className="text-center md:text-right italic opacity-50">
-             Session ID: {Math.random().toString(36).substring(7).toUpperCase()} • v15.7-STABLE
+             Session ID: {Math.random().toString(36).substring(7).toUpperCase()} • v15.8-STABLE
            </div>
         </div>
 

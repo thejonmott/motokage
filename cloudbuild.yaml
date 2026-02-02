@@ -5,11 +5,9 @@ steps:
       - '-c'
       - |
         export IMAGE_PATH="us-central1-docker.pkg.dev/$PROJECT_ID/motokage-studio/app:$BRANCH_NAME"
-        if [ "$BRANCH_NAME" == "staging" ]; then
-          docker build -t $$IMAGE_PATH --build-arg VITE_APP_ENV=staging .
-        else
-          docker build -t $$IMAGE_PATH --build-arg VITE_APP_ENV=production .
-        fi
+        docker build -t $$IMAGE_PATH \
+          --build-arg VITE_APP_ENV=$BRANCH_NAME \
+          --build-arg API_KEY=$$API_KEY .
         docker push $$IMAGE_PATH
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: 'bash'

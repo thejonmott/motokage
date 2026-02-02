@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Persona } from '../types';
 
@@ -41,11 +42,20 @@ const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona }) => {
 
   const getSystemManifests = () => ({
     'shadow_config.json': JSON.stringify(persona, null, 2),
+    'vite.config.ts': `import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+export default defineConfig({
+  plugins: [react()],
+  define: { 'process.env.API_KEY': JSON.stringify(process.env.API_KEY) },
+  build: { outDir: 'dist' }
+});`,
     'Dockerfile': `# Stage 1: Build the React application
 FROM node:20-alpine AS build
 WORKDIR /app
 ARG VITE_APP_ENV
+ARG API_KEY
 ENV VITE_APP_ENV=$VITE_APP_ENV
+ENV API_KEY=$API_KEY
 COPY package*.json ./
 RUN npm install
 COPY . .
@@ -57,19 +67,6 @@ COPY --from=build /app/dist /usr/share/nginx/html
 COPY default.conf /etc/nginx/conf.d/default.conf
 EXPOSE 8080
 CMD ["nginx", "-g", "daemon off;"]`,
-    'default.conf': `server {
-    listen       8080;
-    server_name  localhost;
-    location / {
-        root   /usr/share/nginx/html;
-        index  index.html index.htm;
-        try_files $uri $uri/ /index.html;
-    }
-    error_page   500 502 503 504  /50x.html;
-    location = /50x.html {
-        root   /usr/share/nginx/html;
-    }
-}`,
     'cloudbuild.yaml': `steps:
   - name: 'gcr.io/cloud-builders/docker'
     entrypoint: 'bash'
@@ -77,11 +74,9 @@ CMD ["nginx", "-g", "daemon off;"]`,
       - '-c'
       - |
         export IMAGE_PATH="us-central1-docker.pkg.dev/$PROJECT_ID/motokage-studio/app:$BRANCH_NAME"
-        if [ "$BRANCH_NAME" == "staging" ]; then
-          docker build -t $$IMAGE_PATH --build-arg VITE_APP_ENV=staging .
-        else
-          docker build -t $$IMAGE_PATH --build-arg VITE_APP_ENV=production .
-        fi
+        docker build -t $$IMAGE_PATH \\
+          --build-arg VITE_APP_ENV=$BRANCH_NAME \\
+          --build-arg API_KEY=$$API_KEY .
         docker push $$IMAGE_PATH
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: 'bash'
@@ -184,7 +179,7 @@ options:
         method: 'POST',
         headers,
         body: JSON.stringify({ 
-          message: `🚀 [IGNITION] Digital Twin Sync: v14.4 (AR Fixed Deployment)`, 
+          message: `🚀 [IGNITION] Digital Twin Sync: v15.8 (Client-Side Key Fix)`, 
           tree: treeData.sha, 
           parents: [latestCommitSha] 
         })
@@ -198,7 +193,7 @@ options:
       });
 
       setProgress(100);
-      setStatus({ type: 'success', msg: `IGNITION SUCCESSFUL. CLOUD BUILD DISPATCHED.` });
+      setStatus({ type: 'success', msg: `IGNITION SUCCESSFUL. CODE TRANSMITTED.` });
     } catch (e: any) {
       setStatus({ type: 'error', msg: e.message });
     }
@@ -210,9 +205,9 @@ options:
         <div className="space-y-1">
           <h3 className="text-sm font-bold text-white uppercase tracking-widest flex items-center gap-2">
             <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
-            Global Uplink v14.4 "Ignition"
+            Global Uplink v15.8 "Ignition"
           </h3>
-          <p className="text-[10px] text-slate-500 font-mono uppercase tracking-widest">GCP: motokage | Region: us-central1</p>
+          <p className="text-[10px] text-slate-500 font-mono uppercase tracking-widest">GCP: motokage | us-central1</p>
         </div>
         <div className="flex items-center gap-6">
           <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800">
@@ -222,83 +217,54 @@ options:
         </div>
       </div>
 
-      <div className="p-8 bg-slate-950 border border-emerald-500/30 rounded-3xl space-y-6 shadow-[0_0_30px_rgba(16,185,129,0.05)]">
-        <div className="flex justify-between items-start">
+      <div className="grid md:grid-cols-2 gap-8">
+        <div className="p-8 bg-slate-950 border border-emerald-500/30 rounded-3xl space-y-6 shadow-[0_0_30px_rgba(16,185,129,0.05)]">
            <h4 className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest flex items-center gap-2">
-              🚀 Pre-flight Status: GO FOR LAUNCH
+              🚀 Ignition Status: READY
            </h4>
-           <span className="text-[8px] font-mono text-slate-600 bg-slate-900 px-2 py-1 rounded">AR_V4_FIXED</span>
-        </div>
-        <div className="grid md:grid-cols-2 gap-8 text-[9px] font-mono leading-relaxed">
-           <div className="space-y-4">
-              <div className="flex items-center gap-3 text-white">
-                 <span className="text-emerald-500">✓</span>
-                 <span>Artifact Registry Repository Found</span>
-              </div>
-              <div className="flex items-center gap-3 text-white">
-                 <span className="text-emerald-500">✓</span>
-                 <span>Cloud Build IAM Policies Propagated</span>
-              </div>
-              <div className="flex items-center gap-3 text-white">
-                 <span className="text-emerald-500">✓</span>
-                 <span>Manifests aligned with us-central1</span>
-              </div>
+           <div className="space-y-4 text-[9px] font-mono leading-relaxed text-slate-400">
+              <p>1. Transmit the latest DNA to GitHub.</p>
+              <p>2. Google Cloud Build should auto-trigger.</p>
+              <p>3. Vite will bake the API_KEY into the bundle.</p>
            </div>
-           <div className="p-4 bg-slate-900 rounded-xl border border-white/5 space-y-4">
-              <p className="text-slate-400 italic">"The target repository is live. Syncing now will transmit the DNA stack and trigger the serverless deployment sequence."</p>
-              <div className="flex gap-2">
-                 <a href="https://console.cloud.google.com/artifacts/docker/motokage/us-central1/motokage-studio?project=motokage" target="_blank" rel="noreferrer" className="flex-grow text-center py-2 bg-emerald-600/10 text-emerald-400 rounded-lg border border-emerald-500/20 hover:bg-emerald-600/20 transition-all uppercase tracking-widest text-[7px] font-bold">Registry Console</a>
-                 <a href="https://console.cloud.google.com/cloud-build/builds?project=motokage" target="_blank" rel="noreferrer" className="flex-grow text-center py-2 bg-blue-600/10 text-blue-400 rounded-lg border border-blue-500/20 hover:bg-blue-600/20 transition-all uppercase tracking-widest text-[7px] font-bold">Build Monitor</a>
-              </div>
+        </div>
+
+        <div className="p-8 bg-slate-950 border border-orange-500/30 rounded-3xl space-y-6 shadow-[0_0_30px_rgba(249,115,22,0.05)]">
+           <h4 className="text-[10px] font-bold text-orange-400 uppercase tracking-widest flex items-center gap-2">
+              🛠 Trigger Troubleshooting
+           </h4>
+           <div className="space-y-4 text-[9px] font-mono leading-relaxed text-slate-400">
+              <p>If push doesn't trigger build:</p>
+              <p>• Check GCP > Cloud Build > Triggers.</p>
+              <p>• Pattern: <span className="text-white">^({targetEnv})$</span></p>
+              <p>• Event: <span className="text-white">Push to a branch</span></p>
            </div>
         </div>
       </div>
 
       <div className="grid md:grid-cols-2 gap-8">
         <div className="space-y-4">
-          <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">GitHub Destination</label>
-          <input 
-            type="text" 
-            value={repo} 
-            onChange={(e) => setRepo(e.target.value)} 
-            className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-6 py-4 text-xs text-white outline-none focus:border-emerald-500 transition-all font-mono" 
-          />
+          <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">GitHub Repository</label>
+          <input type="text" value={repo} onChange={(e) => setRepo(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-6 py-4 text-xs text-white outline-none focus:border-emerald-500 transition-all font-mono" />
         </div>
         <div className="space-y-4">
-          <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Authentication State</label>
-          <input 
-            type="password" 
-            value={token} 
-            onChange={(e) => setToken(e.target.value)} 
-            placeholder="Identity Token Locked"
-            className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-6 py-4 text-xs text-white outline-none focus:border-emerald-500 transition-all font-mono" 
-          />
+          <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Auth Token</label>
+          <input type="password" value={token} onChange={(e) => setToken(e.target.value)} placeholder="Locked" className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-6 py-4 text-xs text-white outline-none focus:border-emerald-500 transition-all font-mono" />
         </div>
       </div>
 
-      <button onClick={handleAtomicSync} disabled={status.type === 'loading'} className={`w-full py-7 rounded-[2rem] font-bold text-[12px] uppercase tracking-[0.5em] transition-all shadow-2xl border relative overflow-hidden group ${targetEnv === 'main' ? 'bg-purple-600 hover:bg-purple-700 border-purple-500/50' : 'bg-emerald-600 hover:bg-emerald-700 border-emerald-500/50'}`}>
-        <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/5 to-white/0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
-        {status.type === 'loading' ? 'TRANSMITTING DNA...' : `IGNITE DEPLOYMENT TO ${targetEnv.toUpperCase()}`}
+      <button onClick={handleAtomicSync} disabled={status.type === 'loading'} className={`w-full py-7 rounded-[2rem] font-bold text-[12px] uppercase tracking-[0.5em] transition-all shadow-2xl border group ${targetEnv === 'main' ? 'bg-purple-600 hover:bg-purple-700 border-purple-500/50' : 'bg-emerald-600 hover:bg-emerald-700 border-emerald-500/50'}`}>
+        {status.type === 'loading' ? 'SYNCING DNA...' : `UPLINK TO ${targetEnv.toUpperCase()}`}
       </button>
 
-      {status.type === 'loading' && (
-        <div className="space-y-4">
-          <div className="h-2 w-full bg-slate-950 rounded-full overflow-hidden border border-slate-800">
-             <div className={`h-full transition-all duration-300 shadow-[0_0_15px_rgba(16,185,129,0.5)] ${targetEnv === 'main' ? 'bg-purple-500' : 'bg-emerald-500'}`} style={{ width: `${progress}%` }}></div>
-          </div>
-          <p className="text-[9px] text-slate-500 font-mono text-center uppercase tracking-widest">UPLOADING CORE: <span className="text-white">{currentFile}</span></p>
-        </div>
-      )}
-      
       {status.msg && (
         <div className={`p-8 rounded-[2rem] text-[10px] font-mono text-center uppercase tracking-widest border animate-in fade-in slide-in-from-top-4 ${status.type === 'error' ? 'bg-orange-500/10 border-orange-500/20 text-orange-400' : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'}`}>
           {status.msg}
           {status.type === 'success' && (
             <div className="mt-6 flex flex-col items-center gap-4">
-              <p className="text-slate-400 normal-case italic">"DNA Successfully uplinked. Cloud Build is now architecting the reflection in us-central1."</p>
+              <p className="text-slate-400 normal-case italic">Code transmitted. If build doesn't start, manually trigger it in the GCP Console.</p>
               <div className="flex gap-4">
-                <a href="https://console.cloud.google.com/cloud-build/builds?project=motokage" target="_blank" rel="noreferrer" className="px-6 py-3 bg-slate-800 rounded-xl text-[9px] hover:bg-slate-700 transition-all font-bold">Track Build Progress</a>
-                <a href={targetEnv === 'main' ? prodUrl : stagingUrl} target="_blank" rel="noreferrer" className="px-6 py-3 bg-white text-slate-950 rounded-xl text-[9px] hover:bg-slate-200 transition-all font-bold">Preview Target</a>
+                <a href="https://console.cloud.google.com/cloud-build/builds?project=motokage" target="_blank" rel="noreferrer" className="px-6 py-3 bg-slate-800 rounded-xl text-[9px] hover:bg-slate-700 transition-all font-bold">Open GCP Console</a>
               </div>
             </div>
           )}
