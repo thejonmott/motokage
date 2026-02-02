@@ -1,12 +1,17 @@
-FROM node:20-slim AS build
+# Stage 1: Build React Frontend
+FROM node:20-alpine AS build
 WORKDIR /app
 COPY package*.json ./
 RUN npm install
 COPY . .
 RUN npm run build
 
-FROM nginx:alpine
-RUN sed -i 's/80/8080/g' /etc/nginx/conf.d/default.conf
-COPY --from=build /app/dist /usr/share/nginx/html
+# Stage 2: Serve via Python Proxy
+FROM python:3.11-slim
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY . .
+COPY --from=build /app/dist ./dist
 EXPOSE 8080
-CMD ["nginx", "-g", "daemon off;"]
+CMD ["python", "server.py"]

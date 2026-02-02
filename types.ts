@@ -1,5 +1,6 @@
 export enum TabType {
   STRATEGY = 'STRATEGY',
+  DOCUMENTATION = 'DOCUMENTATION',
   ORIGIN = 'ORIGIN',
   MOSAIC = 'MOSAIC',
   DNA = 'DNA',
@@ -63,4 +64,21 @@ export interface Message {
   role: 'user' | 'model';
   text: string;
   timestamp: Date;
+}
+
+// Global scope augmentation for environment-provided objects to resolve conflicts
+declare global {
+  /**
+   * Interface for the AI Studio API key management utility provided by the environment.
+   * Defined here to ensure identity with the global object's type across potential multiple declarations.
+   */
+  interface AIStudio {
+    hasSelectedApiKey: () => Promise<boolean>;
+    openSelectKey: () => Promise<void>;
+  }
+
+  interface Window {
+    // Restored readonly modifier to fix the "identical modifiers" error during interface merging.
+    readonly aistudio: AIStudio;
+  }
 }

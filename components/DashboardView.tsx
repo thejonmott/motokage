@@ -46,7 +46,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({ persona, setPersona, acce
   if (accessLevel !== 'CORE') {
     return (
       <div className="h-[60vh] flex flex-col items-center justify-center text-center space-y-6">
-        <div className="w-20 h-20 rounded-full border border-red-500/20 flex items-center justify-center text-red-500 text-3xl animate-pulse">
+        <div className="w-20 h-20 rounded-full border border-orange-500/20 flex items-center justify-center text-orange-500 text-3xl animate-pulse">
            <Icons.Security />
         </div>
         <div className="space-y-2">
@@ -145,9 +145,9 @@ const DashboardView: React.FC<DashboardViewProps> = ({ persona, setPersona, acce
 
         {activeSubTab === 'security' && (
           <div className="animate-in slide-in-from-bottom-4 duration-500 max-w-4xl mx-auto w-full space-y-10">
-            <div className="bg-slate-900 border border-red-500/20 rounded-[3rem] p-12 space-y-10 shadow-2xl">
+            <div className="bg-slate-900 border border-orange-500/20 rounded-[3rem] p-12 space-y-10 shadow-2xl">
               <div className="flex items-center gap-5 border-b border-slate-800 pb-8">
-                <div className="w-14 h-14 bg-slate-950 border border-red-500/30 rounded-2xl flex items-center justify-center text-red-500">
+                <div className="w-14 h-14 bg-slate-950 border border-orange-500/30 rounded-2xl flex items-center justify-center text-orange-500">
                    <Icons.Security />
                 </div>
                 <div>

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Persona } from '../types';
 
@@ -15,6 +16,7 @@ const toBase64 = (str: string) => {
 const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona }) => {
   const [repo, setRepo] = useState(localStorage.getItem('motokage_repo') || 'thejonmott/motokage');
   const [token, setToken] = useState(localStorage.getItem('motokage_token') || '');
+  const [targetEnv, setTargetEnv] = useState<'staging' | 'main'>(localStorage.getItem('motokage_env') as any || 'staging');
   const [status, setStatus] = useState<{ type: 'idle' | 'loading' | 'success' | 'error', msg?: string }>({ type: 'idle' });
   const [progress, setProgress] = useState(0);
   const [currentFile, setCurrentFile] = useState('');
@@ -22,58 +24,155 @@ const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona }) => {
   useEffect(() => {
     localStorage.setItem('motokage_repo', repo);
     localStorage.setItem('motokage_token', token);
-  }, [repo, token]);
+    localStorage.setItem('motokage_env', targetEnv);
+  }, [repo, token, targetEnv]);
 
   const sourceFiles = [
-    'App.tsx', 'types.ts', 'index.tsx', 'metadata.json', 'index.html', 'package.json', 'vite.config.ts', 'tsconfig.json', 'cloudbuild.yaml', '.dockerignore',
+    'App.tsx', 'types.ts', 'index.tsx', 'metadata.json', 'index.html', 'package.json', 'vite.config.ts', 'tsconfig.json', '.dockerignore',
+    'server.py', 'requirements.txt',
     'components/Header.tsx', 'components/PersonaForm.tsx', 'components/ArchitectureView.tsx',
     'components/MemoryVault.tsx', 'components/NexusView.tsx', 'components/ChatInterface.tsx',
     'components/ComparisonView.tsx', 'components/ShadowSyncConsole.tsx', 'components/StagingView.tsx',
     'components/DNAView.tsx', 'components/OriginStoryView.tsx', 'components/MosaicView.tsx',
-    'components/MandatesView.tsx', 'components/DashboardView.tsx'
+    'components/MandatesView.tsx', 'components/DashboardView.tsx', 'components/DocumentationView.tsx', 'default.conf', 'Dockerfile', 'cloudbuild.yaml'
   ];
 
   const getSystemManifests = () => ({
-    'Dockerfile': `FROM node:20-slim AS build\nWORKDIR /app\nCOPY package*.json ./\nRUN npm install\nCOPY . .\nRUN npm run build\n\nFROM nginx:alpine\nRUN sed -i 's/80/8080/g' /etc/nginx/conf.d/default.conf\nCOPY --from=build /app/dist /usr/share/nginx/html\nEXPOSE 8080\nCMD ["nginx", "-g", "daemon off;"]`,
-    'shadow_config.json': JSON.stringify(persona, null, 2)
+    'shadow_config.json': JSON.stringify(persona, null, 2),
+    'Dockerfile': `# Stage 1: Build React Frontend
+FROM node:20-alpine AS build
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+RUN npm run build
+
+# Stage 2: Serve via Python Proxy
+FROM python:3.11-slim
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY . .
+COPY --from=build /app/dist ./dist
+EXPOSE 8080
+CMD ["python", "server.py"]`,
+    'cloudbuild.yaml': `steps:
+  # 1. Build and push the container image
+  - name: 'gcr.io/cloud-builders/docker'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        export IMAGE_PATH="us-central1-docker.pkg.dev/$PROJECT_ID/motokage-studio/app:$BRANCH_NAME"
+        docker build -t $$IMAGE_PATH .
+        docker push $$IMAGE_PATH
+
+  # 2. Deploy to Cloud Run: Resolve type conflict and bind Secret
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        export IMAGE_PATH="us-central1-docker.pkg.dev/$PROJECT_ID/motokage-studio/app:$BRANCH_NAME"
+        
+        # We explicitly remove the literal API_KEY to allow the secret-backed type change
+        if [ "$BRANCH_NAME" == "staging" ]; then
+          gcloud run deploy motokage-studio-staging \\
+            --image $$IMAGE_PATH \\
+            --region us-central1 \\
+            --platform managed \\
+            --allow-unauthenticated \\
+            --remove-env-vars=API_KEY \\
+            --set-secrets="API_KEY=motokage-api-key:latest"
+        else
+          gcloud run deploy motokage-studio \\
+            --image $$IMAGE_PATH \\
+            --region us-central1 \\
+            --platform managed \\
+            --allow-unauthenticated \\
+            --remove-env-vars=API_KEY \\
+            --set-secrets="API_KEY=motokage-api-key:latest"
+        fi
+
+images:
+  - 'us-central1-docker.pkg.dev/$PROJECT_ID/motokage-studio/app:$BRANCH_NAME'
+
+options:
+  logging: CLOUD_LOGGING_ONLY`
   });
 
   const handleAtomicSync = async () => {
-    if (!repo || !token) { setStatus({ type: 'error', msg: 'Missing Repo or Token' }); return; }
+    if (!repo || !token) { 
+      setStatus({ type: 'error', msg: 'Missing Repo or Token' }); 
+      return; 
+    }
     setStatus({ type: 'loading' });
     setProgress(0);
+    setCurrentFile('Handshaking with GitHub...');
 
     try {
-      const headers = { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json' };
-      const manifests = getSystemManifests();
-      const allFiles = [...sourceFiles, ...Object.keys(manifests)];
+      const headers = { 
+        'Authorization': `token ${token}`, 
+        'Accept': 'application/vnd.github.v3+json', 
+        'Content-Type': 'application/json' 
+      };
+
+      const branchCheck = await fetch(`https://api.github.com/repos/${repo}/git/refs/heads/${targetEnv}`, { headers });
       
-      const refRes = await fetch(`https://api.github.com/repos/${repo}/git/refs/heads/main`, { headers });
-      if (!refRes.ok) throw new Error("Branch 'main' not found. Ensure repo is initialized.");
-      const refData = await refRes.json();
-      const latestCommitSha = refData.object.sha;
+      let latestCommitSha;
+      if (!branchCheck.ok) {
+        setCurrentFile(`Provisioning branch: ${targetEnv}...`);
+        const mainRes = await fetch(`https://api.github.com/repos/${repo}/git/refs/heads/main`, { headers });
+        if (!mainRes.ok) throw new Error("Main branch not found. Repository must be initialized.");
+        const mainData = await mainRes.json();
+        latestCommitSha = mainData.object.sha;
 
-      const treeItems: any[] = [];
-      for (let i = 0; i < allFiles.length; i++) {
-        const path = allFiles[i];
-        setCurrentFile(path);
-        let content = manifests[path as keyof typeof manifests] || '';
-        if (!content) {
-          const res = await fetch(`/${path}`); // Ensure root relative fetch
-          if (!res.ok) continue;
-          content = await res.text();
-        }
-
-        const blobRes = await fetch(`https://api.github.com/repos/${repo}/git/blobs`, {
+        await fetch(`https://api.github.com/repos/${repo}/git/refs`, {
           method: 'POST',
           headers,
-          body: JSON.stringify({ content: toBase64(content), encoding: 'base64' })
+          body: JSON.stringify({ ref: `refs/heads/${targetEnv}`, sha: latestCommitSha })
         });
-        const blobData = await blobRes.json();
-        treeItems.push({ path, mode: '100644', type: 'blob', sha: blobData.sha });
-        setProgress(Math.round(((i + 1) / allFiles.length) * 80));
+      } else {
+        const refData = await branchCheck.json();
+        latestCommitSha = refData.object.sha;
       }
 
+      const manifests = getSystemManifests();
+      const uniqueFiles = Array.from(new Set([...sourceFiles, ...Object.keys(manifests)]));
+      const treeItems: any[] = [];
+
+      for (let i = 0; i < uniqueFiles.length; i++) {
+        const path = uniqueFiles[i];
+        setCurrentFile(`Staging: ${path}`);
+        
+        let content = (manifests as any)[path] || '';
+        
+        if (!content || content === 'Full contents of the file' || content === '') {
+          try {
+            const res = await fetch(`/${path}`); 
+            if (res.ok) {
+              const fetched = await res.text();
+              if (fetched && fetched.trim() !== '' && fetched !== 'Full contents of the file') {
+                content = fetched;
+              }
+            }
+          } catch (e) { console.warn(`Local fetch bypassed for ${path}`); }
+        }
+
+        if (content && content !== 'Full contents of the file') {
+          const blobRes = await fetch(`https://api.github.com/repos/${repo}/git/blobs`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ content: toBase64(content), encoding: 'base64' })
+          });
+          const blobData = await blobRes.json();
+          treeItems.push({ path, mode: '100644', type: 'blob', sha: blobData.sha });
+        }
+        
+        setProgress(Math.round(((i + 1) / uniqueFiles.length) * 100));
+      }
+
+      setCurrentFile('Commiting DNA sequence...');
       const treeRes = await fetch(`https://api.github.com/repos/${repo}/git/trees`, {
         method: 'POST',
         headers,
@@ -84,18 +183,21 @@ const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona }) => {
       const commitRes = await fetch(`https://api.github.com/repos/${repo}/git/commits`, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ message: `Identity Mesh Update: ${new Date().toISOString()}`, tree: treeData.sha, parents: [latestCommitSha] })
+        body: JSON.stringify({ 
+          message: `🚀 [GOLD_DEPLOY] Motokage v15.9.2: Fixing Secret type conflict (motokage-api-key)`, 
+          tree: treeData.sha, 
+          parents: [latestCommitSha] 
+        })
       });
       const commitData = await commitRes.json();
 
-      await fetch(`https://api.github.com/repos/${repo}/git/refs/heads/main`, {
+      await fetch(`https://api.github.com/repos/${repo}/git/refs/heads/${targetEnv}`, {
         method: 'PATCH',
         headers,
         body: JSON.stringify({ sha: commitData.sha })
       });
 
-      setProgress(100);
-      setStatus({ type: 'success', msg: 'Core Mesh Synchronized. Remote Build Triggered.' });
+      setStatus({ type: 'success', msg: `UPLINK SUCCESSFUL. RE-DEPLOYMENT TRIGGERED ON ${targetEnv.toUpperCase()}.` });
     } catch (e: any) {
       setStatus({ type: 'error', msg: e.message });
     }
@@ -104,63 +206,70 @@ const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona }) => {
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-[3rem] p-12 shadow-2xl space-y-10">
       <div className="flex justify-between items-center border-b border-slate-800 pb-8">
-        <div className="space-y-1">
-          <h3 className="text-sm font-bold text-white uppercase tracking-widest">Global Uplink v4.2</h3>
-          <p className="text-[10px] text-slate-500 font-mono uppercase">Identity State Synchronizer</p>
+        <div className="space-y-1 text-left">
+          <h3 className="text-sm font-bold text-white uppercase tracking-widest flex items-center gap-2">
+            <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
+            Global Uplink v15.9.2 "Gold Standard"
+          </h3>
+          <p className="text-[10px] text-slate-500 font-mono uppercase tracking-widest">Secret Bound: motokage-api-key</p>
         </div>
-        <div className="flex items-center gap-4">
-          <a 
-            href="https://console.cloud.google.com/run" 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="px-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-[9px] font-bold text-indigo-400 uppercase tracking-widest hover:border-indigo-500/50 transition-all flex items-center gap-2"
-          >
-            Cloud Registry
-          </a>
-          <div className={`w-2 h-2 rounded-full ${status.type === 'loading' ? 'bg-blue-500 animate-pulse' : 'bg-green-500'}`}></div>
+        <div className="flex items-center gap-6">
+          <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800">
+             <button onClick={() => setTargetEnv('staging')} className={`px-4 py-1.5 rounded-lg text-[8px] font-bold uppercase transition-all ${targetEnv === 'staging' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30' : 'text-slate-600'}`}>Staging</button>
+             <button onClick={() => setTargetEnv('main')} className={`px-4 py-1.5 rounded-lg text-[8px] font-bold uppercase transition-all ${targetEnv === 'main' ? 'bg-purple-500/10 text-purple-400 border border-purple-500/30' : 'text-slate-600'}`}>Production</button>
+          </div>
         </div>
       </div>
-      
+
       <div className="grid md:grid-cols-2 gap-8">
-        <div className="space-y-4">
+        <div className="p-8 bg-slate-950 border border-emerald-500/30 rounded-3xl space-y-4 text-left">
+           <h4 className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">Type Conflict Mitigation</h4>
+           <p className="text-[9px] text-slate-500 font-mono leading-relaxed">
+             Cloud Build is now instructed to drop the legacy environment variable <code>API_KEY</code> before binding the <strong>Secret Manager</strong> version. This ensures an atomic transition to server-side security.
+           </p>
+        </div>
+        <div className="p-8 bg-slate-950 border border-indigo-500/30 rounded-3xl space-y-4 text-left">
+           <h4 className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest">Sync Telemetry</h4>
+           <div className="space-y-3">
+              <div className="flex justify-between items-end text-[8px] font-mono text-slate-400 uppercase tracking-widest">
+                <span className="truncate max-w-[200px]">{currentFile || 'Awaiting Ignition'}</span>
+                <span>{progress}%</span>
+              </div>
+              <div className="w-full h-2 bg-slate-900 rounded-full overflow-hidden border border-slate-800">
+                <div 
+                  className="h-full bg-gradient-to-r from-indigo-500 to-emerald-500 transition-all duration-300 relative" 
+                  style={{ width: `${progress}%` }}
+                >
+                  <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
+                </div>
+              </div>
+           </div>
+        </div>
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-8">
+        <div className="space-y-4 text-left">
           <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">GitHub Repository</label>
-          <input type="text" value={repo} onChange={(e) => setRepo(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-6 py-4 text-xs text-white outline-none focus:border-indigo-500 transition-all font-mono" />
+          <input type="text" value={repo} onChange={(e) => setRepo(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-6 py-4 text-xs text-white outline-none focus:border-emerald-500 transition-all font-mono" />
         </div>
-        <div className="space-y-4">
-          <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Access Token</label>
-          <input type="password" value={token} onChange={(e) => setToken(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-6 py-4 text-xs text-white outline-none focus:border-indigo-500 transition-all font-mono" />
+        <div className="space-y-4 text-left">
+          <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Auth Token</label>
+          <input type="password" value={token} onChange={(e) => setToken(e.target.value)} placeholder="Locked" className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-6 py-4 text-xs text-white outline-none focus:border-emerald-500 transition-all font-mono" />
         </div>
       </div>
 
-      <div className="p-8 bg-slate-950 border border-slate-800 rounded-3xl space-y-4">
-         <h4 className="text-[9px] font-bold text-white uppercase tracking-widest flex items-center gap-2">
-           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-           Build Integrity
-         </h4>
-         <p className="text-[10px] text-slate-500 font-mono leading-relaxed uppercase tracking-wider">
-           Uplink includes all core components. Overwrites <span className="text-white">main</span> branch and triggers <span className="text-indigo-400">Cloud Build</span>.
-         </p>
-      </div>
+      <button onClick={handleAtomicSync} disabled={status.type === 'loading'} className={`w-full py-7 rounded-[2rem] font-bold text-[12px] uppercase tracking-[0.5em] transition-all shadow-2xl border group ${targetEnv === 'main' ? 'bg-purple-600 hover:bg-purple-700 border-purple-500/50' : 'bg-emerald-600 hover:bg-emerald-700 border-emerald-500/50'}`}>
+        {status.type === 'loading' ? 'CLEANING SLATE & TRANSMITTING...' : `UPLINK TO ${targetEnv.toUpperCase()}`}
+      </button>
 
-      <div className="space-y-8">
-        <button onClick={handleAtomicSync} disabled={status.type === 'loading'} className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white py-6 rounded-3xl font-bold text-[11px] uppercase tracking-[0.4em] transition-all shadow-2xl relative overflow-hidden group">
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
-          {status.type === 'loading' ? 'Encrypting & Pushing Core Mesh...' : 'Uplink Local State to Registry'}
-        </button>
-        {status.type === 'loading' && (
-          <div className="space-y-4">
-            <div className="h-1.5 w-full bg-slate-950 rounded-full overflow-hidden border border-slate-800">
-               <div className="h-full bg-indigo-500 transition-all duration-300 shadow-[0_0_20px_rgba(79,70,229,0.5)]" style={{ width: `${progress}%` }}></div>
-            </div>
-            <p className="text-[8px] text-slate-500 font-mono text-center uppercase tracking-widest">TRANSMITTING: <span className="text-white">{currentFile}</span></p>
-          </div>
-        )}
-        {status.msg && (
-          <div className={`p-6 rounded-2xl text-[10px] font-mono text-center uppercase tracking-widest border animate-in fade-in slide-in-from-top-2 ${status.type === 'error' ? 'bg-red-500/10 border-red-500/20 text-red-400' : 'bg-green-500/10 border-green-500/20 text-green-400'}`}>
-            {status.msg}
-          </div>
-        )}
-      </div>
+      {status.msg && (
+        <div className={`p-8 rounded-[2rem] text-[10px] font-mono text-center uppercase tracking-widest border animate-in fade-in slide-in-from-top-4 ${status.type === 'error' ? 'bg-orange-500/10 border-orange-500/20 text-orange-400' : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'}`}>
+          {status.msg}
+          {status.type === 'success' && (
+            <p className="mt-4 text-slate-500 normal-case italic">Transitioning from literal to Secret. Watch the Cloud Build logs for final confirmation.</p>
+          )}
+        </div>
+      )}
     </div>
   );
 };

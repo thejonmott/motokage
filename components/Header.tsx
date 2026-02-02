@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { TabType, AccessLevel } from '../types';
 
@@ -6,11 +7,15 @@ interface HeaderProps {
   setActiveTab: (tab: TabType) => void;
   accessLevel: AccessLevel;
   setAccessLevel: (level: AccessLevel) => void;
+  hasKey: boolean;
 }
 
 const Icons = {
   Architecture: () => (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3h7v7H3z"/><path d="M14 3h7v7h-7z"/><path d="M14 14h7v7h-7z"/><path d="M3 14h7v7H3z"/><path d="M10 6.5h4"/><path d="M10 17.5h4"/><path d="M6.5 10v4"/><path d="M17.5 10v4"/></svg>
+  ),
+  Documentation: () => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
   ),
   Origin: () => (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20"/><path d="M2 12h20"/><path d="M12 2a10 10 0 1 0 10 10"/><path d="m16 16-4-4"/></svg>
@@ -34,21 +39,32 @@ const Icons = {
 
 const TabConfig = {
   [TabType.STRATEGY]: { label: 'Architecture', icon: <Icons.Architecture /> },
+  [TabType.DOCUMENTATION]: { label: 'The Recipe', icon: <Icons.Documentation /> },
   [TabType.ORIGIN]: { label: 'Origin Story', icon: <Icons.Origin /> },
   [TabType.MOSAIC]: { label: 'Mosaic', icon: <Icons.Mosaic /> },
   [TabType.DNA]: { label: 'DNA', icon: <Icons.DNA /> },
   [TabType.MANDATES]: { label: 'Mandates', icon: <Icons.Mandates /> },
-  [TabType.SELF]: { label: 'The Self (BETA)', icon: <Icons.Self /> },
-  [TabType.DASHBOARD]: { label: 'Studio Dashboard', icon: <Icons.Dashboard /> },
+  [TabType.SELF]: { label: "Chat with Twin", icon: <Icons.Self /> },
+  [TabType.DASHBOARD]: { label: 'Dashboard', icon: <Icons.Dashboard /> },
 };
 
-const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, accessLevel, setAccessLevel }) => {
+const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, accessLevel, setAccessLevel, hasKey }) => {
   const [showLogin, setShowLogin] = useState(false);
   const [pass, setPass] = useState('');
+  
+  const getAppEnv = (): string => {
+    try {
+      const meta = import.meta as any;
+      if (typeof meta !== 'undefined' && meta.env && meta.env.VITE_APP_ENV) {
+        return meta.env.VITE_APP_ENV;
+      }
+    } catch (e) {}
+    return 'production';
+  };
 
-  const publicTabs = [TabType.STRATEGY, TabType.ORIGIN, TabType.MOSAIC, TabType.SELF];
-  const coreTabs = [TabType.DNA, TabType.MANDATES, TabType.DASHBOARD];
-
+  const appEnv = getAppEnv();
+  const publicTabs = [TabType.STRATEGY, TabType.DOCUMENTATION, TabType.SELF];
+  const coreTabs = [TabType.DNA, TabType.MANDATES, TabType.MOSAIC, TabType.ORIGIN, TabType.DASHBOARD];
   const currentTabs = accessLevel === 'CORE' ? [...publicTabs, ...coreTabs] : publicTabs;
 
   const handleLogin = (e: React.FormEvent) => {
@@ -64,25 +80,33 @@ const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, accessLevel, s
 
   return (
     <header className={`sticky top-0 z-50 border-b px-8 py-4 transition-all duration-500 ${accessLevel === 'CORE' ? 'bg-slate-900 border-purple-500/20' : 'bg-slate-950/80 backdrop-blur-xl border-slate-900'}`}>
-      <div className="container mx-auto flex items-center justify-between gap-6">
-        <div className="flex items-center gap-4">
+      <div className="container mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
+        <div className="flex items-center gap-4 shrink-0">
           <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xl shadow-lg transition-all ${accessLevel === 'CORE' ? 'bg-purple-600 shadow-purple-500/20 rotate-3' : 'bg-indigo-600 shadow-indigo-500/20'}`}>影</div>
-          <div>
-            <div className="font-heading font-bold text-lg text-white tracking-tight">
-              {accessLevel === 'CORE' ? (
-                <span>Motokage <span className="text-purple-400 italic font-light">Studio</span></span>
-              ) : (
-                <span>MOTOKAGE <span className="text-slate-500 font-light mx-1">|</span> <span className="text-indigo-400">Jon Mott's Digital Twin <span className="text-[10px] text-slate-500 align-top ml-1">BETA</span></span></span>
+          <div className="text-left">
+            <div className="flex items-center gap-3">
+              <div className="font-heading font-bold text-lg text-white tracking-tight">
+                {accessLevel === 'CORE' ? (
+                  <span>Motokage <span className="text-purple-400 italic font-light">Studio</span></span>
+                ) : (
+                  <span>MOTOKAGE <span className="text-slate-500 font-light mx-1">|</span> <span className="text-indigo-400">Digital Twin</span></span>
+                )}
+              </div>
+              {appEnv === 'staging' && (
+                <span className="px-2 py-0.5 bg-amber-500/10 border border-amber-500/30 text-amber-500 text-[8px] font-bold uppercase tracking-widest rounded">Calibration</span>
               )}
             </div>
-            <div className="flex items-center gap-2">
-              <span className={`w-1 h-1 rounded-full animate-pulse ${accessLevel === 'CORE' ? 'bg-purple-500' : 'bg-indigo-500'}`}></span>
-              <span className="text-[7px] font-mono text-slate-500 tracking-widest uppercase">{accessLevel} SYSTEM ACTIVE</span>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5">
+                <span className={`w-1 h-1 rounded-full animate-pulse ${hasKey ? 'bg-emerald-500 shadow-[0_0_5px_rgba(16,185,129,0.8)]' : 'bg-rose-500 animate-none'}`}></span>
+                <span className="text-[7px] font-mono text-slate-500 tracking-widest uppercase">Uplink: {hasKey ? 'NOMINAL' : 'OFFLINE'}</span>
+              </div>
+              <span className="text-[7px] font-mono text-slate-600 tracking-widest uppercase">v15.6-STABLE • us-central1</span>
             </div>
           </div>
         </div>
 
-        <nav className="flex items-center gap-1 bg-slate-900/50 p-1 rounded-2xl border border-slate-800">
+        <nav className={`flex items-center gap-1 bg-slate-900/50 p-1 rounded-2xl border border-slate-800 transition-all ${accessLevel === 'CORE' ? 'flex-wrap justify-center max-w-2xl' : 'flex-nowrap'}`}>
           {currentTabs.map((tab) => (
             <button
               key={tab}
@@ -93,14 +117,14 @@ const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, accessLevel, s
               <span className={`${activeTab === tab ? (accessLevel === 'CORE' ? 'text-purple-400' : 'text-indigo-400') : 'text-slate-500'}`}>
                 {TabConfig[tab].icon}
               </span>
-              <span className="hidden md:inline">{TabConfig[tab].label}</span>
+              <span className="hidden md:inline text-[8px] whitespace-nowrap">{TabConfig[tab].label}</span>
             </button>
           ))}
         </nav>
 
         <button 
           onClick={() => accessLevel === 'CORE' ? setAccessLevel('AMBASSADOR') : setShowLogin(true)}
-          className={`px-4 py-2 rounded-xl text-[9px] font-bold uppercase tracking-widest border transition-all
+          className={`px-4 py-2 rounded-xl text-[9px] font-bold uppercase tracking-widest border transition-all shrink-0
             ${accessLevel === 'CORE' ? 'border-purple-500 text-purple-400 bg-purple-500/10' : 'border-slate-800 text-slate-500 bg-slate-900'}`}
         >
           {accessLevel === 'CORE' ? 'Exit Studio' : 'Studio Login'}
@@ -110,7 +134,7 @@ const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, accessLevel, s
       {showLogin && (
         <div className="absolute top-24 right-8 w-72 bg-slate-900 border border-slate-800 p-6 rounded-3xl shadow-2xl z-[100] animate-in slide-in-from-top-4">
           <form onSubmit={handleLogin} className="space-y-4">
-            <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center">Identity Handshake</div>
+            <div className="text-[10px] font-bold text-orange-500 uppercase tracking-widest text-center">Identity Handshake</div>
             <input 
               type="password" 
               value={pass} 
