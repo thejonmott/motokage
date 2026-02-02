@@ -51,14 +51,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
     setActiveSubLog('Accessing DNA Memory...');
 
     try {
-      // Prioritize the built-in process.env.API_KEY (v15.8 injection)
-      const activeKey = process.env.API_KEY;
-      
-      if (!activeKey) {
-        throw new Error("NEURAL_SYNC_TIMEOUT: No server-side API key detected in this bundle. Please verify your Cloud Build 'define' configuration.");
-      }
-
-      const ai = new GoogleGenAI({ apiKey: activeKey });
+      // Use process.env.API_KEY directly when initializing the GoogleGenAI instance.
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       
       const history = messages.map(m => ({
         role: m.role,
@@ -91,6 +85,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
       let fullResponse = '';
       setActiveSubLog('Streaming Neural Output...');
       for await (const chunk of result) {
+        // Access chunk.text directly (not a function).
         const chunkText = (chunk as GenerateContentResponse).text;
         if (chunkText) {
           fullResponse += chunkText;
@@ -109,10 +104,12 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
       console.error("Cognitive Uplink Failure:", error);
       
       let errorMsg = "The digital reflection is momentarily out of sync. Please check the system telemetry.";
-      if (error.message?.includes("NEURAL_SYNC_TIMEOUT")) {
-        errorMsg = "[SYSTEM_ADVISORY]: The provisioned API key is missing from the build. Visitors cannot chat until the key is injected via vite.config.ts during deployment.";
-      } else if (error.message?.includes("403")) {
-        errorMsg = "[SYSTEM_ADVISORY]: Authentication failure. The baked-in API key may have expired or lacks permissions.";
+      
+      // Implement robust handling for API errors based exclusively on process.env.API_KEY environment context.
+      if (error.message?.includes("API key not found") || !process.env.API_KEY) {
+        errorMsg = "[NEURAL_OFFLINE]: The twin is missing its cognitive key. Visitors cannot engage until the owner provides a valid API_KEY via the build configuration or identity handshake.";
+      } else if (error.message?.includes("403") || error.message?.includes("401")) {
+        errorMsg = "[AUTH_FAILURE]: The provided API key is invalid or restricted. Re-calibration is required by the architect.";
       }
 
       setMessages(prev => [...prev, { 
@@ -256,7 +253,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
              <span className="flex items-center gap-1"><span className="w-1 h-1 bg-emerald-500 rounded-full"></span> Tier: PRO_RANK</span>
            </div>
            <div className="text-center md:text-right italic opacity-50">
-             Session ID: {Math.random().toString(36).substring(7).toUpperCase()} • v15.8-STABLE
+             Session ID: {Math.random().toString(36).substring(7).toUpperCase()} • v15.8.2-STABLE
            </div>
         </div>
 

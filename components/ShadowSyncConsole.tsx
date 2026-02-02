@@ -46,7 +46,9 @@ const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona }) => {
 import react from '@vitejs/plugin-react';
 export default defineConfig({
   plugins: [react()],
-  define: { 'process.env.API_KEY': JSON.stringify(process.env.API_KEY) },
+  define: { 
+    'process.env.API_KEY': JSON.stringify(process.env.API_KEY) 
+  },
   build: { outDir: 'dist' }
 });`,
     'Dockerfile': `# Stage 1: Build the React application
@@ -68,29 +70,38 @@ COPY default.conf /etc/nginx/conf.d/default.conf
 EXPOSE 8080
 CMD ["nginx", "-g", "daemon off;"]`,
     'cloudbuild.yaml': `steps:
+  # 1. Build and Push the container image to Artifact Registry
   - name: 'gcr.io/cloud-builders/docker'
     entrypoint: 'bash'
     args:
       - '-c'
       - |
         export IMAGE_PATH="us-central1-docker.pkg.dev/$PROJECT_ID/motokage-studio/app:$BRANCH_NAME"
+        
+        # CRITICAL: We pass the API_KEY as a build argument so Vite can bake it in
         docker build -t $$IMAGE_PATH \\
           --build-arg VITE_APP_ENV=$BRANCH_NAME \\
           --build-arg API_KEY=$$API_KEY .
+        
         docker push $$IMAGE_PATH
+
+  # 2. Deploy to Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: 'bash'
     args:
       - '-c'
       - |
         export IMAGE_PATH="us-central1-docker.pkg.dev/$PROJECT_ID/motokage-studio/app:$BRANCH_NAME"
+        
         if [ "$BRANCH_NAME" == "staging" ]; then
           gcloud run deploy motokage-studio-staging --image $$IMAGE_PATH --region us-central1 --platform managed --allow-unauthenticated
         else
           gcloud run deploy motokage-studio --image $$IMAGE_PATH --region us-central1 --platform managed --allow-unauthenticated
         fi
+
 images:
   - 'us-central1-docker.pkg.dev/$PROJECT_ID/motokage-studio/app:$BRANCH_NAME'
+
 options:
   logging: CLOUD_LOGGING_ONLY`
   });
@@ -179,7 +190,7 @@ options:
         method: 'POST',
         headers,
         body: JSON.stringify({ 
-          message: `🚀 [IGNITION] Digital Twin Sync: v15.8.1 (Syntax Fix)`, 
+          message: `🚀 [IGNITION] Digital Twin Sync: v15.8.2 (Full Build Chain Sync)`, 
           tree: treeData.sha, 
           parents: [latestCommitSha] 
         })
@@ -205,7 +216,7 @@ options:
         <div className="space-y-1">
           <h3 className="text-sm font-bold text-white uppercase tracking-widest flex items-center gap-2">
             <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
-            Global Uplink v15.8.1 "Ignition"
+            Global Uplink v15.8.2 "Ignition"
           </h3>
           <p className="text-[10px] text-slate-500 font-mono uppercase tracking-widest">GCP: motokage | us-central1</p>
         </div>
@@ -262,7 +273,7 @@ options:
           {status.msg}
           {status.type === 'success' && (
             <div className="mt-6 flex flex-col items-center gap-4">
-              <p className="text-slate-400 normal-case italic">Code transmitted. If build doesn't start, manually trigger it in the GCP Console.</p>
+              <p className="text-slate-400 normal-case italic">Code transmitted. Ensure the Cloud Build Trigger has _API_KEY variable configured.</p>
               <div className="flex gap-4">
                 <a href="https://console.cloud.google.com/cloud-build/builds?project=motokage" target="_blank" rel="noreferrer" className="px-6 py-3 bg-slate-800 rounded-xl text-[9px] hover:bg-slate-700 transition-all font-bold">Open GCP Console</a>
               </div>

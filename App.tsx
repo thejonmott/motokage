@@ -40,7 +40,7 @@ const INITIAL_PERSONA: Persona = {
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>(TabType.STRATEGY);
   const [accessLevel, setAccessLevel] = useState<AccessLevel>('AMBASSADOR');
-  // v15.7 - Optimistic default: Assume the Cloud Run environment variable is present
+  // v15.8 - Optimistic default: Assume the environment variable is present or will be provided
   const [hasKey, setHasKey] = useState<boolean>(true);
   const [persona, setPersona] = useState<Persona>(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
@@ -50,30 +50,34 @@ const App: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
 
   useEffect(() => {
-    // Keep the internal state synced with the environment variable for diagnostics
+    // Check for key availability across different contexts
     const checkKeyStatus = async () => {
-      const isEnvKeyPresent = !!process.env.API_KEY;
+      let isKeyPresent = false;
       
-      // If we're in AMBASSADOR mode, we stay optimistic
+      // 1. Check baked-in process.env (Vite build time)
+      if (typeof process !== 'undefined' && process.env?.API_KEY) {
+        isKeyPresent = true;
+      }
+      
+      // 2. Check window.aistudio picker (Live environment)
+      if (!isKeyPresent && window.aistudio && typeof window.aistudio.hasSelectedApiKey === 'function') {
+        try {
+          isKeyPresent = await window.aistudio.hasSelectedApiKey();
+        } catch (e) {
+          console.warn("aistudio check failed", e);
+        }
+      }
+
+      // If we're in AMBASSADOR mode, we remain optimistic to avoid blocking UI
       if (accessLevel === 'AMBASSADOR') {
         setHasKey(true);
       } else {
-        // In CORE mode, we check for actual link presence
-        try {
-          if (window.aistudio && typeof window.aistudio.hasSelectedApiKey === 'function') {
-            const selected = await window.aistudio.hasSelectedApiKey();
-            setHasKey(selected || isEnvKeyPresent);
-          } else {
-            setHasKey(isEnvKeyPresent);
-          }
-        } catch (err) {
-          setHasKey(isEnvKeyPresent);
-        }
+        setHasKey(isKeyPresent);
       }
     };
     
     checkKeyStatus();
-    const interval = setInterval(checkKeyStatus, 15000);
+    const interval = setInterval(checkKeyStatus, 10000);
     return () => clearInterval(interval);
   }, [accessLevel]);
 
@@ -139,7 +143,7 @@ const App: React.FC = () => {
       </main>
 
       <footer className="py-12 border-t border-slate-900 text-center text-slate-600 text-[9px] font-mono uppercase tracking-[0.3em]">
-        © 2026 Motokage • Open Architecture v15.7-STABLE • {accessLevel} MODE
+        © 2026 Motokage • Open Architecture v15.8.2-STABLE • {accessLevel} MODE
       </footer>
     </div>
   );

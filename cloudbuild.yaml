@@ -1,26 +1,35 @@
 steps:
+  # 1. Build and Push the container image to Artifact Registry
   - name: 'gcr.io/cloud-builders/docker'
     entrypoint: 'bash'
     args:
       - '-c'
       - |
         export IMAGE_PATH="us-central1-docker.pkg.dev/$PROJECT_ID/motokage-studio/app:$BRANCH_NAME"
+        
+        # CRITICAL: We pass the API_KEY as a build argument so Vite can bake it in
         docker build -t $$IMAGE_PATH \
           --build-arg VITE_APP_ENV=$BRANCH_NAME \
           --build-arg API_KEY=$$API_KEY .
+        
         docker push $$IMAGE_PATH
+
+  # 2. Deploy to Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: 'bash'
     args:
       - '-c'
       - |
         export IMAGE_PATH="us-central1-docker.pkg.dev/$PROJECT_ID/motokage-studio/app:$BRANCH_NAME"
+        
         if [ "$BRANCH_NAME" == "staging" ]; then
           gcloud run deploy motokage-studio-staging --image $$IMAGE_PATH --region us-central1 --platform managed --allow-unauthenticated
         else
           gcloud run deploy motokage-studio --image $$IMAGE_PATH --region us-central1 --platform managed --allow-unauthenticated
         fi
+
 images:
   - 'us-central1-docker.pkg.dev/$PROJECT_ID/motokage-studio/app:$BRANCH_NAME'
+
 options:
   logging: CLOUD_LOGGING_ONLY
