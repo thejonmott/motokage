@@ -1,4 +1,4 @@
-# Stage 1: Build React
+# Stage 1: Build React Frontend
 FROM node:20-alpine AS build
 WORKDIR /app
 COPY package*.json ./
@@ -6,7 +6,7 @@ RUN npm install
 COPY . .
 RUN npm run build
 
-# Stage 2: Python Proxy Server
+# Stage 2: Serve via Python Proxy
 FROM python:3.11-slim
 WORKDIR /app
 COPY requirements.txt .

@@ -1,4 +1,5 @@
 steps:
+  # 1. Build the container image
   - name: 'gcr.io/cloud-builders/docker'
     entrypoint: 'bash'
     args:
@@ -7,18 +8,33 @@ steps:
         export IMAGE_PATH="us-central1-docker.pkg.dev/$PROJECT_ID/motokage-studio/app:$BRANCH_NAME"
         docker build -t $$IMAGE_PATH .
         docker push $$IMAGE_PATH
+
+  # 2. Deploy to Cloud Run with Secret Binding (motokage-api-key)
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: 'bash'
     args:
       - '-c'
       - |
         export IMAGE_PATH="us-central1-docker.pkg.dev/$PROJECT_ID/motokage-studio/app:$BRANCH_NAME"
+        
         if [ "$BRANCH_NAME" == "staging" ]; then
-          gcloud run deploy motokage-studio-staging --image $$IMAGE_PATH --region us-central1 --platform managed --allow-unauthenticated --set-env-vars="API_KEY=$$API_KEY"
+          gcloud run deploy motokage-studio-staging \
+            --image $$IMAGE_PATH \
+            --region us-central1 \
+            --platform managed \
+            --allow-unauthenticated \
+            --set-secrets="API_KEY=motokage-api-key:latest"
         else
-          gcloud run deploy motokage-studio --image $$IMAGE_PATH --region us-central1 --platform managed --allow-unauthenticated --set-env-vars="API_KEY=$$API_KEY"
+          gcloud run deploy motokage-studio \
+            --image $$IMAGE_PATH \
+            --region us-central1 \
+            --platform managed \
+            --allow-unauthenticated \
+            --set-secrets="API_KEY=motokage-api-key:latest"
         fi
+
 images:
   - 'us-central1-docker.pkg.dev/$PROJECT_ID/motokage-studio/app:$BRANCH_NAME'
+
 options:
   logging: CLOUD_LOGGING_ONLY

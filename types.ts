@@ -10,6 +10,8 @@
 
 
 
+
+
 export enum TabType {
   STRATEGY = 'STRATEGY',
   DOCUMENTATION = 'DOCUMENTATION',
@@ -90,7 +92,7 @@ declare global {
   }
 
   interface Window {
-    // Re-added readonly modifier to ensure alignment with the environment's internal Window definition and fix the "identical modifiers" error.
-    readonly aistudio: AIStudio;
+    // Removed readonly modifier to fix the "identical modifiers" error during interface merging.
+    aistudio: AIStudio;
   }
 }

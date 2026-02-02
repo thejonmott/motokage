@@ -39,7 +39,7 @@ const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona }) => {
 
   const getSystemManifests = () => ({
     'shadow_config.json': JSON.stringify(persona, null, 2),
-    'Dockerfile': `# Stage 1: Build React
+    'Dockerfile': `# Stage 1: Build React Frontend
 FROM node:20-alpine AS build
 WORKDIR /app
 COPY package*.json ./
@@ -47,7 +47,7 @@ RUN npm install
 COPY . .
 RUN npm run build
 
-# Stage 2: Python Proxy Server
+# Stage 2: Serve via Python Proxy
 FROM python:3.11-slim
 WORKDIR /app
 COPY requirements.txt .
@@ -57,6 +57,7 @@ COPY --from=build /app/dist ./dist
 EXPOSE 8080
 CMD ["python", "server.py"]`,
     'cloudbuild.yaml': `steps:
+  # 1. Build the container image
   - name: 'gcr.io/cloud-builders/docker'
     entrypoint: 'bash'
     args:
@@ -65,19 +66,34 @@ CMD ["python", "server.py"]`,
         export IMAGE_PATH="us-central1-docker.pkg.dev/$PROJECT_ID/motokage-studio/app:$BRANCH_NAME"
         docker build -t $$IMAGE_PATH .
         docker push $$IMAGE_PATH
+
+  # 2. Deploy to Cloud Run with Secret Binding (motokage-api-key)
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: 'bash'
     args:
       - '-c'
       - |
         export IMAGE_PATH="us-central1-docker.pkg.dev/$PROJECT_ID/motokage-studio/app:$BRANCH_NAME"
+        
         if [ "$BRANCH_NAME" == "staging" ]; then
-          gcloud run deploy motokage-studio-staging --image $$IMAGE_PATH --region us-central1 --platform managed --allow-unauthenticated --set-env-vars="API_KEY=$$API_KEY"
+          gcloud run deploy motokage-studio-staging \\
+            --image $$IMAGE_PATH \\
+            --region us-central1 \\
+            --platform managed \\
+            --allow-unauthenticated \\
+            --set-secrets="API_KEY=motokage-api-key:latest"
         else
-          gcloud run deploy motokage-studio --image $$IMAGE_PATH --region us-central1 --platform managed --allow-unauthenticated --set-env-vars="API_KEY=$$API_KEY"
+          gcloud run deploy motokage-studio \\
+            --image $$IMAGE_PATH \\
+            --region us-central1 \\
+            --platform managed \\
+            --allow-unauthenticated \\
+            --set-secrets="API_KEY=motokage-api-key:latest"
         fi
+
 images:
   - 'us-central1-docker.pkg.dev/$PROJECT_ID/motokage-studio/app:$BRANCH_NAME'
+
 options:
   logging: CLOUD_LOGGING_ONLY`
   });
@@ -89,7 +105,7 @@ options:
     }
     setStatus({ type: 'loading' });
     setProgress(0);
-    setCurrentFile('Establishing Uplink...');
+    setCurrentFile('Connecting to GitHub API...');
 
     try {
       const headers = { 
@@ -102,9 +118,9 @@ options:
       
       let latestCommitSha;
       if (!branchCheck.ok) {
-        setCurrentFile(`Provisioning ${targetEnv} branch...`);
+        setCurrentFile(`Provisioning branch: ${targetEnv}...`);
         const mainRes = await fetch(`https://api.github.com/repos/${repo}/git/refs/heads/main`, { headers });
-        if (!mainRes.ok) throw new Error("Main branch not found.");
+        if (!mainRes.ok) throw new Error("Main branch not found. Initialization failed.");
         const mainData = await mainRes.json();
         latestCommitSha = mainData.object.sha;
 
@@ -124,7 +140,7 @@ options:
 
       for (let i = 0; i < uniqueFiles.length; i++) {
         const path = uniqueFiles[i];
-        setCurrentFile(`Syncing: ${path}`);
+        setCurrentFile(`Preparing: ${path}`);
         
         let content = (manifests as any)[path] || '';
         
@@ -137,7 +153,7 @@ options:
                 content = fetched;
               }
             }
-          } catch (e) { console.warn(`Could not fetch ${path}`); }
+          } catch (e) { console.warn(`Could not read local ${path}, proceeding...`); }
         }
 
         if (content && content !== 'Full contents of the file') {
@@ -153,6 +169,7 @@ options:
         setProgress(Math.round(((i + 1) / uniqueFiles.length) * 100));
       }
 
+      setCurrentFile('Committing DNA changes...');
       const treeRes = await fetch(`https://api.github.com/repos/${repo}/git/trees`, {
         method: 'POST',
         headers,
@@ -164,7 +181,7 @@ options:
         method: 'POST',
         headers,
         body: JSON.stringify({ 
-          message: `🚀 [GOLD_STANDARD] Motokage Backend Proxy Deployment v15.9.0`, 
+          message: `🚀 [GOLD_DEPLOY] Motokage v15.9.1: Secret binding for motokage-api-key`, 
           tree: treeData.sha, 
           parents: [latestCommitSha] 
         })
@@ -177,7 +194,7 @@ options:
         body: JSON.stringify({ sha: commitData.sha })
       });
 
-      setStatus({ type: 'success', msg: `UPLINK SUCCESSFUL. BACKEND MIGRATION DEPLOYED.` });
+      setStatus({ type: 'success', msg: `UPLINK SUCCESSFUL. BACKEND MIGRATION DEPLOYED TO ${targetEnv.toUpperCase()}.` });
     } catch (e: any) {
       setStatus({ type: 'error', msg: e.message });
     }
@@ -187,11 +204,11 @@ options:
     <div className="bg-slate-900 border border-slate-800 rounded-[3rem] p-12 shadow-2xl space-y-10">
       <div className="flex justify-between items-center border-b border-slate-800 pb-8">
         <div className="space-y-1">
-          <h3 className="text-sm font-bold text-white uppercase tracking-widest flex items-center gap-2">
+          <h3 className="text-sm font-bold text-white uppercase tracking-widest flex items-center gap-2 text-left">
             <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
-            Global Uplink v15.9.0 "Gold Standard"
+            Global Uplink v15.9.1 "Gold Standard"
           </h3>
-          <p className="text-[10px] text-slate-500 font-mono uppercase tracking-widest">GCP: motokage | us-central1</p>
+          <p className="text-[10px] text-slate-500 font-mono uppercase tracking-widest text-left">Secret Binding: motokage-api-key</p>
         </div>
         <div className="flex items-center gap-6">
           <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800">
@@ -202,30 +219,37 @@ options:
       </div>
 
       <div className="grid md:grid-cols-2 gap-8">
-        <div className="p-8 bg-slate-950 border border-emerald-500/30 rounded-3xl space-y-4">
-           <h4 className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">Backend Proxy Architecture</h4>
-           <p className="text-[9px] text-slate-500 font-mono leading-relaxed">This deployment migrates from browser-based inference to a secure Python proxy. Your API_KEY is now managed at the infrastructure layer.</p>
+        <div className="p-8 bg-slate-950 border border-emerald-500/30 rounded-3xl space-y-4 text-left">
+           <h4 className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">Architectural Security</h4>
+           <p className="text-[9px] text-slate-500 font-mono leading-relaxed">
+             This deployment protocol links your <strong>Secret Manager</strong> secret <code>motokage-api-key</code> directly to the Cloud Run runtime. No plaintext keys exist in the repository or browser.
+           </p>
         </div>
         <div className="p-8 bg-slate-950 border border-indigo-500/30 rounded-3xl space-y-4 text-left">
            <h4 className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest">Sync Telemetry</h4>
-           <div className="space-y-2">
-              <div className="flex justify-between items-end text-[8px] font-mono text-slate-600 uppercase">
-                <span>{currentFile || 'Idle'}</span>
+           <div className="space-y-3">
+              <div className="flex justify-between items-end text-[8px] font-mono text-slate-400 uppercase tracking-widest">
+                <span className="truncate max-w-[200px]">{currentFile || 'Awaiting Ignition'}</span>
                 <span>{progress}%</span>
               </div>
-              <div className="w-full h-1.5 bg-slate-900 rounded-full overflow-hidden border border-slate-800">
-                <div className="h-full bg-emerald-500 transition-all duration-300" style={{ width: `${progress}%` }}></div>
+              <div className="w-full h-2 bg-slate-900 rounded-full overflow-hidden border border-slate-800">
+                <div 
+                  className="h-full bg-gradient-to-r from-indigo-500 to-emerald-500 transition-all duration-300 relative" 
+                  style={{ width: `${progress}%` }}
+                >
+                  <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
+                </div>
               </div>
            </div>
         </div>
       </div>
 
       <div className="grid md:grid-cols-2 gap-8">
-        <div className="space-y-4">
+        <div className="space-y-4 text-left">
           <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">GitHub Repository</label>
           <input type="text" value={repo} onChange={(e) => setRepo(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-6 py-4 text-xs text-white outline-none focus:border-emerald-500 transition-all font-mono" />
         </div>
-        <div className="space-y-4">
+        <div className="space-y-4 text-left">
           <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Auth Token</label>
           <input type="password" value={token} onChange={(e) => setToken(e.target.value)} placeholder="Locked" className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-6 py-4 text-xs text-white outline-none focus:border-emerald-500 transition-all font-mono" />
         </div>
@@ -239,7 +263,7 @@ options:
         <div className={`p-8 rounded-[2rem] text-[10px] font-mono text-center uppercase tracking-widest border animate-in fade-in slide-in-from-top-4 ${status.type === 'error' ? 'bg-orange-500/10 border-orange-500/20 text-orange-400' : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'}`}>
           {status.msg}
           {status.type === 'success' && (
-            <p className="mt-4 text-slate-500 normal-case italic">Cloud Build will automatically set up the Python proxy environment.</p>
+            <p className="mt-4 text-slate-500 normal-case italic">Cloud Build is now containerizing and binding secrets. Allow 3-5 minutes for the proxy to stabilize.</p>
           )}
         </div>
       )}
