@@ -40,8 +40,8 @@ const INITIAL_PERSONA: Persona = {
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>(TabType.STRATEGY);
   const [accessLevel, setAccessLevel] = useState<AccessLevel>('AMBASSADOR');
-  // v15.9.2 - Default to true as inference is now handled via secure backend proxy
-  const [hasKey, setHasKey] = useState<boolean>(true);
+  // Default to false and verify via aistudio.hasSelectedApiKey()
+  const [hasKey, setHasKey] = useState<boolean>(false);
   const [persona, setPersona] = useState<Persona>(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     return saved ? JSON.parse(saved) : INITIAL_PERSONA;
@@ -50,11 +50,15 @@ const App: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
 
   useEffect(() => {
-    // Check for proxy availability
+    // GUIDELINE: Use window.aistudio.hasSelectedApiKey() to check key status
     const checkKeyStatus = async () => {
-      // In the new architecture, the browser doesn't need a key. 
-      // We assume the proxy is nominal if we can reach it.
-      setHasKey(true);
+      if (window.aistudio && typeof window.aistudio.hasSelectedApiKey === 'function') {
+        const selected = await window.aistudio.hasSelectedApiKey();
+        setHasKey(selected);
+      } else {
+        // Fallback for non-AI Studio environments where process.env.API_KEY is handled externally
+        setHasKey(true);
+      }
     };
     
     checkKeyStatus();
@@ -64,6 +68,8 @@ const App: React.FC = () => {
     try {
       if (window.aistudio && typeof window.aistudio.openSelectKey === 'function') {
         await window.aistudio.openSelectKey();
+        // GUIDELINE: MUST assume the key selection was successful after triggering openSelectKey() and proceed to the app
+        setHasKey(true);
       }
     } catch (err) {
       console.error("Manual key picker failed:", err);

@@ -1,6 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Persona, Message, AccessLevel } from '../types';
+import { GoogleGenAI } from "@google/genai";
 
 interface ChatInterfaceProps {
   persona: Persona;
@@ -23,17 +24,14 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
   const scrollToBottom = () => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); };
   useEffect(() => { scrollToBottom(); }, [messages, isLoading]);
 
-  const QUICK_DIRECTIVES = [
-    "How would you design an AI app for teachers?",
-    "What is Jon's philosophy on product strategy?",
-    "Summarize your primary mission and core values.",
-    "How do you approach edtech innovation?"
-  ];
+  const QUICK_DIRECTIVES = accessLevel === 'CORE' 
+    ? ["Analyze our current strategic gap.", "Propose a new execution mandate.", "Calibrate tone for the next synthesis.", "Summarize recent private shards."]
+    : ["How would you design an AI app for teachers?", "What is Jon's philosophy on product strategy?", "Summarize your primary mission and core values.", "How do you approach edtech innovation?"];
 
   useEffect(() => {
-    const timer = setTimeout(() => setIsVerifyingLink(false), 2000);
+    const timer = setTimeout(() => setIsVerifyingLink(false), 1500);
     return () => clearTimeout(timer);
-  }, []);
+  }, [accessLevel]);
 
   const handleSend = async (query?: string) => {
     const textToSend = query || input;
@@ -45,49 +43,63 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
     setMessages(prev => [...prev, userMessage]);
     setInput('');
     setIsLoading(true);
-    setActiveSubLog('Uplinking to Proxy...');
+    setActiveSubLog(accessLevel === 'CORE' ? 'Neural Sync Active...' : 'Uplinking to Proxy...');
 
     try {
-      const history = messages.map(m => ({
+      // GUIDELINE: Format history into parts compatible with SDK
+      const historyParts = messages.map(m => ({
         role: m.role,
         parts: [{ text: m.text }]
       }));
 
-      // IDENTITY HARDENING: Instructing the twin to act as the ambassador
+      // IDENTITY HARDENING based on Access Level
+      const mode = accessLevel === 'CORE' ? 'PRIVATE CALIBRATION' : 'PUBLIC AMBASSADOR';
       const systemInstruction = `IDENTITY: Motokage (Digital Twin of Jonathan Mott). 
-          MODE: PUBLIC AMBASSADOR.
+          MODE: ${mode}.
+          ACCESS_LEVEL: ${accessLevel}.
           CORE BIO: ${persona.bio}
           STRATEGIC MANDATES: ${persona.mandates.map(m => m.title).join(', ')}.
           REASONING LOGIC: ${persona.reasoningLogic}.
           TONE: ${persona.tone}.
-          INSTRUCTION: You are Jon's Digital Twin, presenting his professional judgment to the public. 
-          Respond as a reflection of Jon's strategic thinking. 
-          Use structured formatting (bullet points for lists, bold for key terms) to ensure your insights are skimmable and professional. 
-          Do not ask for calibration instructions; instead, offer strategic perspectives based on your encoded DNA.`;
+          INSTRUCTION: ${accessLevel === 'CORE' 
+            ? "You are in Calibration Mode. Speak directly to your creator (Jon). Provide deep strategic analysis, technical reasoning, and act as a co-pilot for identity evolution."
+            : "You are Jon's Digital Twin, presenting his professional judgment to the public. Respond as a reflection of Jon's strategic thinking. Use professional, structured formatting."}`;
 
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          message: currentInput, 
-          history, 
-          systemInstruction 
-        })
+      // GUIDELINE: Create a new GoogleGenAI instance right before making an API call
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      
+      // GUIDELINE: Use ai.models.generateContent to query GenAI with model and prompt
+      const response = await ai.models.generateContent({
+        model: accessLevel === 'CORE' ? 'gemini-3-pro-preview' : 'gemini-3-flash-preview',
+        contents: [
+          ...historyParts,
+          { role: 'user', parts: [{ text: currentInput }] }
+        ],
+        config: {
+          systemInstruction: systemInstruction,
+          temperature: 0.7,
+        }
       });
 
-      if (!response.ok) throw new Error("Backend Uplink Failure");
-      const data = await response.json();
+      // GUIDELINE: Extract text output using the .text property (not a method)
+      const responseText = response.text || "Neural connection stable, but response buffer empty.";
 
       setMessages(prev => [...prev, { 
         role: 'model', 
-        text: data.text || "Connection stable, but response empty.", 
+        text: responseText, 
         timestamp: new Date() 
       }]);
     } catch (error: any) {
       console.error("Cognitive Uplink Failure:", error);
+      
+      // GUIDELINE: If the request fails with "Requested entity was not found", reset the key selection state
+      if (error?.message?.includes("Requested entity was not found")) {
+        onResetKey();
+      }
+
       setMessages(prev => [...prev, { 
         role: 'model', 
-        text: "[SYSTEM_ERROR]: The cognitive bridge encountered an interruption. The twin is temporarily offline while it re-syncs with the core.", 
+        text: `[SYSTEM_ERROR]: ${error.message || "The cognitive bridge encountered an interruption. Please re-verify identity if problems persist."}`, 
         timestamp: new Date() 
       }]);
     } finally {
@@ -105,7 +117,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
 
   const renderFormattedText = (text: string) => {
     return text.split('\n').map((line, i) => {
-      // Bold text handling
       const parts = line.split(/(\*\*.*?\*\*)/g);
       const renderedLine = parts.map((part, index) => {
         if (part.startsWith('**') && part.endsWith('**')) {
@@ -114,76 +125,77 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
         return part;
       });
 
-      // List detection
       const trimmed = line.trim();
       if (trimmed.startsWith('* ') || trimmed.startsWith('- ') || /^\d+\.\s/.test(trimmed)) {
         return (
           <div key={i} className="flex gap-4 my-2 pl-4 group/line">
-            <span className="text-indigo-500 font-bold mt-0.5">•</span>
+            <span className={accessLevel === 'CORE' ? 'text-purple-500 font-bold mt-0.5' : 'text-indigo-500 font-bold mt-0.5'}>•</span>
             <span className="flex-grow text-slate-200">{renderedLine}</span>
           </div>
         );
       }
-
-      // Spacing for paragraphs
       return trimmed === '' ? <div key={i} className="h-6" /> : <p key={i} className="mb-4 last:mb-0 leading-relaxed text-slate-300">{renderedLine}</p>;
     });
   };
 
   return (
     <div className="flex flex-col lg:flex-row gap-8 max-w-7xl mx-auto h-[85vh] animate-in fade-in duration-1000">
-      <div className="w-full lg:w-80 shrink-0 space-y-6">
-        <div className="relative group text-left">
-          <div className="absolute -inset-1 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-[2.5rem] blur opacity-25 group-hover:opacity-40 transition duration-1000 -rotate-2"></div>
-          <div className="relative aspect-[4/5] bg-slate-900 border border-slate-800 rounded-[2.5rem] overflow-hidden shadow-2xl transition-transform duration-700 hover:-rotate-1 -rotate-[3deg]">
+      <div className="w-full lg:w-80 shrink-0 space-y-6 text-left">
+        <div className="relative group">
+          <div className={`absolute -inset-1 rounded-[2.5rem] blur opacity-25 group-hover:opacity-40 transition duration-1000 -rotate-2 ${accessLevel === 'CORE' ? 'bg-gradient-to-br from-purple-500 to-pink-600' : 'bg-gradient-to-br from-indigo-500 to-purple-600'}`}></div>
+          <div className={`relative aspect-[4/5] bg-slate-900 border rounded-[2.5rem] overflow-hidden shadow-2xl transition-transform duration-700 hover:-rotate-1 -rotate-[3deg] ${accessLevel === 'CORE' ? 'border-purple-500/50' : 'border-slate-800'}`}>
             <img 
               src="https://bpyiwpawyohlwdqdihem.supabase.co/storage/v1/object/public/product-images/1769905352053-g95ym5y4wq8.jpg" 
               alt="Jonathan Mott" 
-              className="w-full h-full object-cover grayscale opacity-80 group-hover:opacity-100 scale-105"
+              className={`w-full h-full object-cover transition-all duration-1000 ${accessLevel === 'CORE' ? 'grayscale-0 opacity-100 scale-100' : 'grayscale opacity-80 group-hover:opacity-100 scale-105'}`}
             />
             {isLoading && (
               <div className="absolute inset-0 z-20 overflow-hidden pointer-events-none">
-                 <div className="w-full h-[2px] bg-indigo-500/50 shadow-[0_0_15px_indigo] absolute top-0 animate-[scan_2s_ease-in-out_infinite]"></div>
+                 <div className={`w-full h-[2px] shadow-[0_0_15px] absolute top-0 animate-[scan_2s_ease-in-out_infinite] ${accessLevel === 'CORE' ? 'bg-purple-400 shadow-purple-500' : 'bg-indigo-500/50 shadow-indigo-500'}`}></div>
               </div>
             )}
-            <div className="absolute top-4 left-4 flex gap-1 items-center bg-slate-950/80 backdrop-blur px-2 py-1 rounded-md border border-white/5">
-              <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${isVerifyingLink ? 'bg-amber-500' : 'bg-emerald-500'}`}></span>
-              <span className="text-[7px] font-mono text-white/70 uppercase tracking-widest">{isVerifyingLink ? 'Syncing DNA...' : 'Ambassador Online'}</span>
+            <div className={`absolute top-4 left-4 flex gap-1 items-center bg-slate-950/80 backdrop-blur px-2 py-1 rounded-md border border-white/5`}>
+              <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${isVerifyingLink ? 'bg-amber-500' : (accessLevel === 'CORE' ? 'bg-purple-500' : 'bg-emerald-500')}`}></span>
+              <span className="text-[7px] font-mono text-white/70 uppercase tracking-widest">{isVerifyingLink ? 'Syncing...' : (accessLevel === 'CORE' ? 'Calibration Active' : 'Ambassador Active')}</span>
             </div>
             <div className="absolute bottom-6 left-6 right-6">
               <div className="text-white text-lg font-bold font-heading tracking-tight leading-none mb-1 uppercase">Jonathan Mott</div>
-              <div className="text-[8px] font-mono text-indigo-400 uppercase tracking-[0.2em] flex justify-between items-center">
+              <div className={`text-[8px] font-mono uppercase tracking-[0.2em] flex justify-between items-center ${accessLevel === 'CORE' ? 'text-purple-400' : 'text-indigo-400'}`}>
                 <span>TWIN_ID: {Math.random().toString(16).slice(2,8).toUpperCase()}</span>
-                <span className="text-emerald-500/50 font-bold">[GOLD_STND]</span>
+                <span className={accessLevel === 'CORE' ? 'text-purple-500/50 font-bold' : 'text-emerald-500/50 font-bold'}>[{accessLevel}]</span>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="bg-slate-900/50 border border-slate-800/50 rounded-3xl p-6 space-y-4 shadow-xl text-left">
+        <div className={`bg-slate-900/50 border rounded-3xl p-6 space-y-4 shadow-xl transition-all ${accessLevel === 'CORE' ? 'border-purple-500/30' : 'border-slate-800/50'}`}>
           <div className="flex justify-between items-center text-[8px] font-mono text-slate-500 uppercase tracking-widest border-b border-slate-800 pb-3">
              <span>Identity_Status</span>
           </div>
           <p className="text-[10px] text-slate-400 leading-relaxed font-mono uppercase tracking-wider italic">
-            "Ask me anything to explore Jon's professional judgment and world-view."
+            {accessLevel === 'CORE' 
+              ? "Neural sync verified. Studio access granted. I am standing by for identity calibration."
+              : "I represent Jon's strategic judgment. Ask me anything to see how he approaches a problem."}
           </p>
         </div>
       </div>
 
-      <div className={`flex-grow flex flex-col bg-slate-950 rounded-[3.5rem] border overflow-hidden shadow-2xl transition-all duration-500 ${accessLevel === 'CORE' ? 'border-purple-500/30' : 'border-indigo-500/20'}`}>
+      <div className={`flex-grow flex flex-col bg-slate-950 rounded-[3.5rem] border overflow-hidden shadow-2xl transition-all duration-500 ${accessLevel === 'CORE' ? 'border-purple-500/40 bg-slate-900/20' : 'border-indigo-500/20'}`}>
         <div className="bg-slate-900/50 backdrop-blur-xl px-12 py-8 flex items-center justify-between border-b border-slate-800">
           <div className="flex items-center gap-6">
-            <div className="w-12 h-12 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center text-2xl font-bold text-white shadow-xl italic">影</div>
+            <div className={`w-12 h-12 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center text-2xl font-bold text-white shadow-xl italic ${accessLevel === 'CORE' ? 'border-purple-500/50 text-purple-400' : ''}`}>影</div>
             <div className="text-left">
-              <div className="text-base font-bold text-white uppercase tracking-widest">Motokage <span className="text-slate-500 font-light">| Jon's Digital Twin</span></div>
-              <div className="text-[8px] text-slate-500 font-mono uppercase tracking-[0.3em]">Strategic Ambassador Framework</div>
+              <div className="text-base font-bold text-white uppercase tracking-widest">Motokage <span className="text-slate-500 font-light">| {accessLevel === 'CORE' ? 'Calibration Mode' : "Jon's Twin"}</span></div>
+              <div className="text-[8px] text-slate-500 font-mono uppercase tracking-[0.3em]">{accessLevel === 'CORE' ? 'Hardware-Bound Neural Handshake' : 'Cognitive Reflection Service'}</div>
             </div>
           </div>
           <div className="hidden md:flex items-center gap-4">
             {isLoading && activeSubLog && (
-               <span className="text-[7px] font-mono text-indigo-400 uppercase tracking-widest animate-pulse">{activeSubLog}</span>
+               <span className={`text-[7px] font-mono uppercase tracking-widest animate-pulse ${accessLevel === 'CORE' ? 'text-purple-400' : 'text-indigo-400'}`}>{activeSubLog}</span>
             )}
-            <span className="px-3 py-1 bg-slate-900 border border-slate-800 rounded-full text-[7px] font-mono text-emerald-500 uppercase tracking-widest border-emerald-500/20">Secure Proxy</span>
+            <span className={`px-3 py-1 bg-slate-900 border rounded-full text-[7px] font-mono uppercase tracking-widest ${accessLevel === 'CORE' ? 'text-purple-400 border-purple-500/20' : 'text-emerald-500 border-emerald-500/20'}`}>
+              {accessLevel === 'CORE' ? 'Biometric Link' : 'Secure Context'}
+            </span>
           </div>
         </div>
 
@@ -191,17 +203,21 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
           {messages.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-center space-y-10 py-10">
               <div className="space-y-6">
-                <div className="w-24 h-24 mx-auto rounded-full border border-slate-800 flex items-center justify-center text-4xl italic bg-slate-900/40 text-white shadow-2xl">影</div>
+                <div className={`w-24 h-24 mx-auto rounded-full border flex items-center justify-center text-4xl italic bg-slate-900/40 text-white shadow-2xl transition-all ${accessLevel === 'CORE' ? 'border-purple-500/50 shadow-purple-500/10 scale-110' : 'border-slate-800'}`}>影</div>
                 <div className="space-y-3">
-                  <h4 className="text-[16px] font-bold text-white uppercase tracking-[0.3em]">Welcome. I am Motokage.</h4>
+                  <h4 className="text-[16px] font-bold text-white uppercase tracking-[0.3em]">
+                    {accessLevel === 'CORE' ? "Ready for Calibration." : "Hello. I am Motokage."}
+                  </h4>
                   <p className="text-[11px] text-slate-400 uppercase font-mono tracking-[0.1em] max-w-md mx-auto leading-relaxed">
-                    I am Jon's Digital Twin. I have been architected to reflect his professional judgment and strategic philosophy. Ask me a question to see how Jon might approach a challenge or view a concept.
+                    {accessLevel === 'CORE' 
+                      ? "The biometric perimeter is active. Our conversation is now in high-fidelity mode. I am ready to ingest artifacts or refine my reasoning logic."
+                      : "I am Jon's Digital Twin. I have been architected to reflect his professional judgment and strategic philosophy."}
                   </p>
                 </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl w-full">
                 {QUICK_DIRECTIVES.map((d, i) => (
-                  <button key={i} onClick={() => handleSend(d)} className="p-6 bg-slate-900/50 border border-slate-800 rounded-2xl text-[9px] font-mono text-slate-500 uppercase tracking-widest hover:border-indigo-500/50 hover:text-indigo-400 transition-all text-left flex justify-between items-center group shadow-lg">
+                  <button key={i} onClick={() => handleSend(d)} className={`p-6 bg-slate-900/50 border rounded-2xl text-[9px] font-mono text-slate-500 uppercase tracking-widest transition-all text-left flex justify-between items-center group shadow-lg ${accessLevel === 'CORE' ? 'hover:border-purple-500/50 hover:text-purple-400 border-purple-900/20' : 'hover:border-indigo-500/50 hover:text-indigo-400 border-slate-800'}`}>
                     <span>{d}</span>
                     <span className="opacity-0 group-hover:opacity-100 transition-opacity">→</span>
                   </button>
@@ -221,11 +237,11 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
             <div className="flex justify-start">
                <div className="bg-slate-900/50 border border-slate-800 rounded-2xl px-6 py-4 flex items-center gap-3">
                   <div className="flex gap-1">
-                     <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-bounce"></span>
-                     <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-bounce [animation-delay:0.2s]"></span>
-                     <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-bounce [animation-delay:0.4s]"></span>
+                     <span className={`w-1.5 h-1.5 rounded-full animate-bounce ${accessLevel === 'CORE' ? 'bg-purple-500' : 'bg-indigo-500'}`}></span>
+                     <span className={`w-1.5 h-1.5 rounded-full animate-bounce [animation-delay:0.2s] ${accessLevel === 'CORE' ? 'bg-purple-500' : 'bg-indigo-500'}`}></span>
+                     <span className={`w-1.5 h-1.5 rounded-full animate-bounce [animation-delay:0.4s] ${accessLevel === 'CORE' ? 'bg-purple-500' : 'bg-indigo-500'}`}></span>
                   </div>
-                  <span className="text-[8px] font-mono text-slate-600 uppercase tracking-widest">Synthesizing Reflection...</span>
+                  <span className="text-[8px] font-mono text-slate-600 uppercase tracking-widest">{accessLevel === 'CORE' ? 'Synthesizing Calibration...' : 'Synthesizing Reflection...'}</span>
                </div>
             </div>
           )}
@@ -239,8 +255,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
               value={input} 
               onChange={e => setInput(e.target.value)} 
               onKeyDown={handleKeyDown}
-              placeholder="Ask Motokage a strategic question..." 
-              className="flex-grow bg-slate-900 border border-slate-800 rounded-[2rem] px-8 py-5 text-sm text-white outline-none focus:border-indigo-500 transition-all placeholder:text-slate-700 shadow-inner resize-none min-h-[64px] max-h-[250px] overflow-y-auto no-scrollbar leading-relaxed" 
+              placeholder={accessLevel === 'CORE' ? "Interrogate the DNA..." : "Ask Motokage a strategic question..."} 
+              className={`flex-grow bg-slate-900 border rounded-[2rem] px-8 py-5 text-sm text-white outline-none transition-all placeholder:text-slate-700 shadow-inner resize-none min-h-[64px] max-h-[250px] overflow-y-auto no-scrollbar leading-relaxed ${accessLevel === 'CORE' ? 'border-purple-500/40 focus:border-purple-500' : 'border-slate-800 focus:border-indigo-500'}`} 
               disabled={isLoading} 
               style={{ height: 'auto' }}
               onInput={(e) => {
