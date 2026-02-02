@@ -24,10 +24,10 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
   useEffect(() => { scrollToBottom(); }, [messages, isLoading]);
 
   const QUICK_DIRECTIVES = [
-    "Synthesize your core strategic mandate.",
-    "Summarize your product philosophy.",
-    "Analyze current edtech scaling risks.",
-    "Explain the 'Reflective Alignment Loop'."
+    "How would you design an AI app for teachers?",
+    "What is Jon's philosophy on product strategy?",
+    "Summarize your primary mission and core values.",
+    "How do you approach edtech innovation?"
   ];
 
   useEffect(() => {
@@ -35,10 +35,11 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
     return () => clearTimeout(timer);
   }, []);
 
-  const handleSend = async (query: string) => {
-    if (!query.trim() || isLoading) return;
+  const handleSend = async (query?: string) => {
+    const textToSend = query || input;
+    if (!textToSend.trim() || isLoading) return;
 
-    const currentInput = query;
+    const currentInput = textToSend;
     const userMessage: Message = { role: 'user', text: currentInput, timestamp: new Date() };
     
     setMessages(prev => [...prev, userMessage]);
@@ -52,13 +53,17 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
         parts: [{ text: m.text }]
       }));
 
+      // IDENTITY HARDENING: Instructing the twin to act as the ambassador
       const systemInstruction = `IDENTITY: Motokage (Digital Twin of Jonathan Mott). 
-          CONTEXT: Strategic Calibration Lab.
+          MODE: PUBLIC AMBASSADOR.
           CORE BIO: ${persona.bio}
           STRATEGIC MANDATES: ${persona.mandates.map(m => m.title).join(', ')}.
           REASONING LOGIC: ${persona.reasoningLogic}.
           TONE: ${persona.tone}.
-          ACCESS: ${accessLevel}.`;
+          INSTRUCTION: You are Jon's Digital Twin, presenting his professional judgment to the public. 
+          Respond as a reflection of Jon's strategic thinking. 
+          Use structured formatting (bullet points for lists, bold for key terms) to ensure your insights are skimmable and professional. 
+          Do not ask for calibration instructions; instead, offer strategic perspectives based on your encoded DNA.`;
 
       const response = await fetch('/api/chat', {
         method: 'POST',
@@ -75,20 +80,54 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
 
       setMessages(prev => [...prev, { 
         role: 'model', 
-        text: data.text || "Neural connection timed out.", 
+        text: data.text || "Connection stable, but response empty.", 
         timestamp: new Date() 
       }]);
     } catch (error: any) {
       console.error("Cognitive Uplink Failure:", error);
       setMessages(prev => [...prev, { 
         role: 'model', 
-        text: "[SYSTEM_ERROR]: The backend proxy failed to respond. Ensure your API_KEY is set in Cloud Run.", 
+        text: "[SYSTEM_ERROR]: The cognitive bridge encountered an interruption. The twin is temporarily offline while it re-syncs with the core.", 
         timestamp: new Date() 
       }]);
     } finally {
       setIsLoading(false);
       setActiveSubLog('');
     }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
+  const renderFormattedText = (text: string) => {
+    return text.split('\n').map((line, i) => {
+      // Bold text handling
+      const parts = line.split(/(\*\*.*?\*\*)/g);
+      const renderedLine = parts.map((part, index) => {
+        if (part.startsWith('**') && part.endsWith('**')) {
+          return <strong key={index} className="text-white font-bold">{part.slice(2, -2)}</strong>;
+        }
+        return part;
+      });
+
+      // List detection
+      const trimmed = line.trim();
+      if (trimmed.startsWith('* ') || trimmed.startsWith('- ') || /^\d+\.\s/.test(trimmed)) {
+        return (
+          <div key={i} className="flex gap-4 my-2 pl-4 group/line">
+            <span className="text-indigo-500 font-bold mt-0.5">•</span>
+            <span className="flex-grow text-slate-200">{renderedLine}</span>
+          </div>
+        );
+      }
+
+      // Spacing for paragraphs
+      return trimmed === '' ? <div key={i} className="h-6" /> : <p key={i} className="mb-4 last:mb-0 leading-relaxed text-slate-300">{renderedLine}</p>;
+    });
   };
 
   return (
@@ -109,13 +148,13 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
             )}
             <div className="absolute top-4 left-4 flex gap-1 items-center bg-slate-950/80 backdrop-blur px-2 py-1 rounded-md border border-white/5">
               <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${isVerifyingLink ? 'bg-amber-500' : 'bg-emerald-500'}`}></span>
-              <span className="text-[7px] font-mono text-white/70 uppercase tracking-widest">{isVerifyingLink ? 'Syncing...' : 'Proxy Active'}</span>
+              <span className="text-[7px] font-mono text-white/70 uppercase tracking-widest">{isVerifyingLink ? 'Syncing DNA...' : 'Ambassador Online'}</span>
             </div>
             <div className="absolute bottom-6 left-6 right-6">
               <div className="text-white text-lg font-bold font-heading tracking-tight leading-none mb-1 uppercase">Jonathan Mott</div>
               <div className="text-[8px] font-mono text-indigo-400 uppercase tracking-[0.2em] flex justify-between items-center">
-                <span>ID: {Math.random().toString(16).slice(2,8).toUpperCase()}</span>
-                <span className="text-emerald-500/50">[GOLD]</span>
+                <span>TWIN_ID: {Math.random().toString(16).slice(2,8).toUpperCase()}</span>
+                <span className="text-emerald-500/50 font-bold">[GOLD_STND]</span>
               </div>
             </div>
           </div>
@@ -123,10 +162,10 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
 
         <div className="bg-slate-900/50 border border-slate-800/50 rounded-3xl p-6 space-y-4 shadow-xl text-left">
           <div className="flex justify-between items-center text-[8px] font-mono text-slate-500 uppercase tracking-widest border-b border-slate-800 pb-3">
-             <span>Proxy_Telemetry</span>
+             <span>Identity_Status</span>
           </div>
-          <p className="text-[10px] text-slate-500 leading-relaxed font-mono uppercase tracking-wider italic">
-            "Identity-as-Code. My professional essence is now secured behind a serverless fortress."
+          <p className="text-[10px] text-slate-400 leading-relaxed font-mono uppercase tracking-wider italic">
+            "Ask me anything to explore Jon's professional judgment and world-view."
           </p>
         </div>
       </div>
@@ -136,29 +175,35 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
           <div className="flex items-center gap-6">
             <div className="w-12 h-12 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center text-2xl font-bold text-white shadow-xl italic">影</div>
             <div className="text-left">
-              <div className="text-base font-bold text-white uppercase tracking-widest">Motokage <span className="text-slate-500 font-light">| Synthesis</span></div>
-              <div className="text-[8px] text-slate-500 font-mono uppercase tracking-[0.3em]">Secure Backend Proxy Active</div>
+              <div className="text-base font-bold text-white uppercase tracking-widest">Motokage <span className="text-slate-500 font-light">| Jon's Digital Twin</span></div>
+              <div className="text-[8px] text-slate-500 font-mono uppercase tracking-[0.3em]">Strategic Ambassador Framework</div>
             </div>
           </div>
           <div className="hidden md:flex items-center gap-4">
             {isLoading && activeSubLog && (
                <span className="text-[7px] font-mono text-indigo-400 uppercase tracking-widest animate-pulse">{activeSubLog}</span>
             )}
-            <span className="px-3 py-1 bg-slate-900 border border-slate-800 rounded-full text-[7px] font-mono text-emerald-500 uppercase tracking-widest border-emerald-500/20">Arch: Server-Side</span>
+            <span className="px-3 py-1 bg-slate-900 border border-slate-800 rounded-full text-[7px] font-mono text-emerald-500 uppercase tracking-widest border-emerald-500/20">Secure Proxy</span>
           </div>
         </div>
 
-        <div className="flex-grow overflow-y-auto p-12 space-y-12 no-scrollbar scroll-smooth">
+        <div className="flex-grow overflow-y-auto p-12 space-y-10 no-scrollbar scroll-smooth">
           {messages.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-center space-y-10">
-              <div className="space-y-4 opacity-30 grayscale">
-                <div className="w-20 h-20 mx-auto rounded-full border border-slate-800 flex items-center justify-center text-3xl italic">影</div>
-                <p className="text-[10px] text-slate-500 uppercase font-mono tracking-[0.3em]">Establish Secure Sync</p>
+            <div className="h-full flex flex-col items-center justify-center text-center space-y-10 py-10">
+              <div className="space-y-6">
+                <div className="w-24 h-24 mx-auto rounded-full border border-slate-800 flex items-center justify-center text-4xl italic bg-slate-900/40 text-white shadow-2xl">影</div>
+                <div className="space-y-3">
+                  <h4 className="text-[16px] font-bold text-white uppercase tracking-[0.3em]">Welcome. I am Motokage.</h4>
+                  <p className="text-[11px] text-slate-400 uppercase font-mono tracking-[0.1em] max-w-md mx-auto leading-relaxed">
+                    I am Jon's Digital Twin. I have been architected to reflect his professional judgment and strategic philosophy. Ask me a question to see how Jon might approach a challenge or view a concept.
+                  </p>
+                </div>
               </div>
-              <div className="grid grid-cols-2 gap-4 max-w-lg w-full">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl w-full">
                 {QUICK_DIRECTIVES.map((d, i) => (
-                  <button key={i} onClick={() => handleSend(d)} className="p-4 bg-slate-900/50 border border-slate-800 rounded-2xl text-[9px] font-mono text-slate-500 uppercase tracking-widest hover:border-indigo-500/50 hover:text-indigo-400 transition-all text-left">
-                    {d}
+                  <button key={i} onClick={() => handleSend(d)} className="p-6 bg-slate-900/50 border border-slate-800 rounded-2xl text-[9px] font-mono text-slate-500 uppercase tracking-widest hover:border-indigo-500/50 hover:text-indigo-400 transition-all text-left flex justify-between items-center group shadow-lg">
+                    <span>{d}</span>
+                    <span className="opacity-0 group-hover:opacity-100 transition-opacity">→</span>
                   </button>
                 ))}
               </div>
@@ -166,8 +211,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
           ) : (
             messages.map((msg, i) => (
               <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in slide-in-from-bottom-2`}>
-                <div className={`max-w-[85%] rounded-[2.5rem] px-10 py-8 text-[14px] leading-relaxed border shadow-2xl text-left ${msg.role === 'user' ? (accessLevel === 'CORE' ? 'bg-purple-600 border-purple-500 text-white shadow-purple-500/10' : 'bg-indigo-600 border-indigo-500 text-white shadow-indigo-500/10') : 'bg-slate-900 border-slate-800 text-slate-200 shadow-slate-950/50'}`}>
-                  {msg.text}
+                <div className={`max-w-[90%] rounded-[2.5rem] px-10 py-8 text-[15px] border shadow-2xl text-left ${msg.role === 'user' ? (accessLevel === 'CORE' ? 'bg-purple-600 border-purple-500 text-white shadow-purple-500/10' : 'bg-indigo-600 border-indigo-500 text-white shadow-indigo-500/10') : 'bg-slate-900 border-slate-800 text-slate-200 shadow-slate-950/50'}`}>
+                  {msg.role === 'model' ? renderFormattedText(msg.text) : <p className="whitespace-pre-wrap">{msg.text}</p>}
                 </div>
               </div>
             ))
@@ -180,21 +225,39 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
                      <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-bounce [animation-delay:0.2s]"></span>
                      <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-bounce [animation-delay:0.4s]"></span>
                   </div>
-                  <span className="text-[8px] font-mono text-slate-600 uppercase tracking-widest">Bridging Cognitive Proxy...</span>
+                  <span className="text-[8px] font-mono text-slate-600 uppercase tracking-widest">Synthesizing Reflection...</span>
                </div>
             </div>
           )}
           <div ref={messagesEndRef} />
         </div>
 
-        <form onSubmit={(e) => { e.preventDefault(); handleSend(input); }} className="p-10 bg-slate-950 border-t border-slate-900">
-          <div className="flex gap-4 max-w-5xl mx-auto">
-            <input type="text" value={input} onChange={e => setInput(e.target.value)} placeholder="Query via secure backend..." className="flex-grow bg-slate-900 border border-slate-800 rounded-[2rem] px-8 py-5 text-sm text-white outline-none focus:border-indigo-500 transition-all placeholder:text-slate-700 shadow-inner" disabled={isLoading} />
-            <button type="submit" disabled={isLoading || !input.trim()} className={`px-10 rounded-[2rem] font-bold text-[10px] uppercase tracking-widest shadow-2xl transition-all disabled:opacity-50 ${accessLevel === 'CORE' ? 'bg-purple-600 hover:bg-purple-700 shadow-purple-500/20' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-500/20'} text-white`}>
+        <div className="p-10 bg-slate-950 border-t border-slate-900">
+          <div className="flex gap-4 max-w-5xl mx-auto items-end">
+            <textarea 
+              rows={1}
+              value={input} 
+              onChange={e => setInput(e.target.value)} 
+              onKeyDown={handleKeyDown}
+              placeholder="Ask Motokage a strategic question..." 
+              className="flex-grow bg-slate-900 border border-slate-800 rounded-[2rem] px-8 py-5 text-sm text-white outline-none focus:border-indigo-500 transition-all placeholder:text-slate-700 shadow-inner resize-none min-h-[64px] max-h-[250px] overflow-y-auto no-scrollbar leading-relaxed" 
+              disabled={isLoading} 
+              style={{ height: 'auto' }}
+              onInput={(e) => {
+                const target = e.target as HTMLTextAreaElement;
+                target.style.height = 'auto';
+                target.style.height = `${target.scrollHeight}px`;
+              }}
+            />
+            <button 
+              onClick={() => handleSend()}
+              disabled={isLoading || !input.trim()} 
+              className={`h-[64px] px-10 rounded-[2rem] font-bold text-[10px] uppercase tracking-widest shadow-2xl transition-all disabled:opacity-50 shrink-0 ${accessLevel === 'CORE' ? 'bg-purple-600 hover:bg-purple-700 shadow-purple-500/20' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-500/20'} text-white`}
+            >
               Uplink
             </button>
           </div>
-        </form>
+        </div>
       </div>
       <style>{`
         @keyframes scan {
