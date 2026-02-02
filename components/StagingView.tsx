@@ -1,6 +1,8 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Persona, MemoryShard, AccessLevel } from '../types';
+// Fix: Import GoogleGenAI from the official SDK
+import { GoogleGenAI } from "@google/genai";
 
 interface StagingViewProps {
   persona: Persona;
@@ -21,36 +23,54 @@ const StagingView: React.FC<StagingViewProps> = ({ persona, setPersona, accessLe
     setIsLoading(true); setInput('');
     setTestLog(prev => [...prev, { role: 'user', text: query, timestamp: new Date() }]);
     try {
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          message: query, 
-          history: [], 
+      // Fix: Create a new GoogleGenAI instance right before the call to ensures it always uses the most up-to-date API key.
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const response = await ai.models.generateContent({
+        model: 'gemini-3-pro-preview', // High-fidelity strategic reasoning
+        contents: { parts: [{ text: query }] },
+        config: { 
           systemInstruction: `Mode: ${accessLevel}. LAB_ENV. High-fidelity calibration session.` 
-        })
+        }
       });
-      const data = await response.json();
-      setTestLog(prev => [...prev, { role: 'model', text: data.text, timestamp: new Date() }]);
-    } catch (e) { console.error(e); } finally { setIsLoading(false); }
+      // Fix: The text property directly returns the string output.
+      const text = response.text;
+      setTestLog(prev => [...prev, { role: 'model', text: text || "Neural connection stable, but response buffer empty.", timestamp: new Date() }]);
+    } catch (error: any) {
+      console.error(error);
+      // Fix: If the request fails with "Requested entity was not found.", trigger the key selection dialog again.
+      if (error.message?.includes("Requested entity was not found.")) {
+        if (window.aistudio && typeof window.aistudio.openSelectKey === 'function') {
+           window.aistudio.openSelectKey();
+        }
+      }
+    } finally { setIsLoading(false); }
   };
 
   const startPromotion = async (content: string) => {
     setIsPromoting(true);
     setIsLoading(true);
     try {
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          message: `Scrub this content: ${content}`, 
-          history: [], 
-          systemInstruction: "Transform this PRIVATE insight into a PUBLIC-SAFE strategic axiom. Remove PII." 
-        })
+      // Fix: Create a new GoogleGenAI instance right before the call to ensures it always uses the most up-to-date API key.
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const response = await ai.models.generateContent({
+        model: 'gemini-3-pro-preview',
+        contents: { parts: [{ text: `Scrub this content for PII and professional alignment: ${content}` }] },
+        config: { 
+          systemInstruction: "Transform this PRIVATE insight into a PUBLIC-SAFE strategic axiom. Remove PII while preserving strategic depth." 
+        }
       });
-      const data = await response.json();
-      setPromotionDraft(data.text || '');
-    } catch (e) { console.error(e); } finally { setIsLoading(false); }
+      // Fix: The text property directly returns the string output.
+      const text = response.text;
+      setPromotionDraft(text || '');
+    } catch (error: any) {
+      console.error(error);
+      // Fix: If the request fails with "Requested entity was not found.", trigger the key selection dialog again.
+      if (error.message?.includes("Requested entity was not found.")) {
+        if (window.aistudio && typeof window.aistudio.openSelectKey === 'function') {
+           window.aistudio.openSelectKey();
+        }
+      }
+    } finally { setIsLoading(false); }
   };
 
   const confirmPromotion = () => {
