@@ -32,8 +32,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
   ];
 
   const handleSend = async (query: string) => {
-    // Rely exclusively on process.env.API_KEY as per core deployment instructions
-    if (!query.trim() || isLoading || !process.env.API_KEY) return;
+    // Only proceed if we have a valid query and are not already loading
+    if (!query.trim() || isLoading) return;
 
     const currentInput = query;
     const userMessage: Message = { role: 'user', text: currentInput, timestamp: new Date() };
@@ -45,6 +45,11 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
     setActiveSubLog('Accessing DNA Memory...');
 
     try {
+      // In v15.7, we attempt to initialize with the system variable directly
+      if (!process.env.API_KEY) {
+        throw new Error("COGNITIVE_RELAY_ABSENT: The system's environment variable is not propagating to this session.");
+      }
+
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       
       const history = messages.map(m => ({
@@ -95,9 +100,16 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
     } catch (error: any) {
       console.error("Cognitive Uplink Failure:", error);
       
+      let errorMsg = "The digital reflection is momentarily out of sync. Please check the system telemetry.";
+      if (error.message?.includes("COGNITIVE_RELAY_ABSENT")) {
+        errorMsg = "[SYSTEM_ADVISORY]: The API_KEY environment variable is not currently accessible to the browser client. Ensure your Cloud Run build is injecting the variable for public visitors.";
+      } else if (error.message?.includes("403") || error.message?.includes("API_KEY_INVALID")) {
+        errorMsg = "[SYSTEM_ADVISORY]: The provisioned API key has expired or lacks the necessary permissions for Gemini 3 Pro reasoning.";
+      }
+
       setMessages(prev => [...prev, { 
         role: 'model', 
-        text: `[UPLINK_FAILURE]: ${error.message || 'The cognitive relay timed out.'}`, 
+        text: errorMsg, 
         timestamp: new Date() 
       }]);
     } finally {
@@ -105,21 +117,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
       setActiveSubLog('');
     }
   };
-
-  // If absolutely no API key is detected in the environment, show a subtle warning for the admin
-  if (!process.env.API_KEY && !hasKey) {
-     return (
-       <div className="flex flex-col items-center justify-center h-[70vh] max-w-2xl mx-auto text-center space-y-8 animate-in fade-in">
-          <div className="w-20 h-20 rounded-full border border-rose-500/20 flex items-center justify-center text-rose-500 text-3xl">!</div>
-          <div className="space-y-4">
-             <h2 className="text-2xl font-bold font-heading text-white tracking-tight">System Offline</h2>
-             <p className="text-slate-500 text-xs font-mono uppercase tracking-widest leading-relaxed">
-                The API key environment variable (process.env.API_KEY) is missing. This twin requires a server-side configuration to ignite for public visitors.
-             </p>
-          </div>
-       </div>
-     );
-  }
 
   return (
     <div className="flex flex-col lg:flex-row gap-8 max-w-7xl mx-auto h-[85vh] animate-in fade-in duration-1000">
@@ -252,7 +249,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
              <span className="flex items-center gap-1"><span className="w-1 h-1 bg-emerald-500 rounded-full"></span> Tier: PAY-AS-YOU-GO</span>
            </div>
            <div className="text-center md:text-right italic opacity-50">
-             Session ID: {Math.random().toString(36).substring(7).toUpperCase()} • v15.6-STABLE
+             Session ID: {Math.random().toString(36).substring(7).toUpperCase()} • v15.7-STABLE
            </div>
         </div>
 

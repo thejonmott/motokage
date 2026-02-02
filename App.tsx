@@ -40,8 +40,8 @@ const INITIAL_PERSONA: Persona = {
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>(TabType.STRATEGY);
   const [accessLevel, setAccessLevel] = useState<AccessLevel>('AMBASSADOR');
-  // Initialize hasKey based on the environment variable presence
-  const [hasKey, setHasKey] = useState<boolean>(!!process.env.API_KEY);
+  // v15.7 - Optimistic default: Assume the Cloud Run environment variable is present
+  const [hasKey, setHasKey] = useState<boolean>(true);
   const [persona, setPersona] = useState<Persona>(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     return saved ? JSON.parse(saved) : INITIAL_PERSONA;
@@ -50,28 +50,32 @@ const App: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
 
   useEffect(() => {
+    // Keep the internal state synced with the environment variable for diagnostics
     const checkKeyStatus = async () => {
-      // If we have an env key, we are good
-      if (process.env.API_KEY) {
+      const isEnvKeyPresent = !!process.env.API_KEY;
+      
+      // If we're in AMBASSADOR mode, we stay optimistic
+      if (accessLevel === 'AMBASSADOR') {
         setHasKey(true);
-        return;
-      }
-
-      // Fallback for local AI Studio testing environments
-      try {
-        if (window.aistudio && typeof window.aistudio.hasSelectedApiKey === 'function') {
-          const selected = await window.aistudio.hasSelectedApiKey();
-          setHasKey(selected);
+      } else {
+        // In CORE mode, we check for actual link presence
+        try {
+          if (window.aistudio && typeof window.aistudio.hasSelectedApiKey === 'function') {
+            const selected = await window.aistudio.hasSelectedApiKey();
+            setHasKey(selected || isEnvKeyPresent);
+          } else {
+            setHasKey(isEnvKeyPresent);
+          }
+        } catch (err) {
+          setHasKey(isEnvKeyPresent);
         }
-      } catch (err) {
-        console.warn("Environmental key detection failure:", err);
       }
     };
     
     checkKeyStatus();
-    const interval = setInterval(checkKeyStatus, 10000);
+    const interval = setInterval(checkKeyStatus, 15000);
     return () => clearInterval(interval);
-  }, []);
+  }, [accessLevel]);
 
   const handleOpenKeyPicker = async () => {
     try {
@@ -110,7 +114,7 @@ const App: React.FC = () => {
       
       <main className="container mx-auto px-6 py-12 max-w-7xl">
         <div key={`${accessLevel}-${activeTab}`} className="animate-in fade-in duration-500">
-          {activeTab === TabType.STRATEGY && <ArchitectureView persona={persona} />}
+          {activeTab === TabType.STRATEGY && <ArchitectureView persona={persona} isCloudSynced={hasKey} />}
           {activeTab === TabType.DOCUMENTATION && <DocumentationView />}
           {activeTab === TabType.ORIGIN && <OriginStoryView persona={persona} setPersona={setPersona} accessLevel={accessLevel} />}
           {activeTab === TabType.MOSAIC && <MosaicView persona={persona} setPersona={setPersona} accessLevel={accessLevel} />}
@@ -135,7 +139,7 @@ const App: React.FC = () => {
       </main>
 
       <footer className="py-12 border-t border-slate-900 text-center text-slate-600 text-[9px] font-mono uppercase tracking-[0.3em]">
-        © 2026 Motokage • Open Architecture v15.6-STABLE • {accessLevel} MODE
+        © 2026 Motokage • Open Architecture v15.7-STABLE • {accessLevel} MODE
       </footer>
     </div>
   );
