@@ -14,14 +14,18 @@ app = Flask(__name__, static_folder='dist')
 # Configure Gemini
 # The API_KEY is now injected via Secret Manager as an environment variable
 API_KEY = os.getenv('API_KEY') or os.getenv('GEMINI_API_KEY')
+
 if API_KEY:
-    logger.info("Cognitive key successfully detected in environment.")
+    logger.info("Cognitive infrastructure successfully detected the 'motokage-api-key'.")
     genai.configure(api_key=API_KEY)
 else:
-    logger.error("CRITICAL: API_KEY missing. Backend proxy will fail to authenticate with Google GenAI.")
+    logger.error("CRITICAL ERROR: 'API_KEY' environment variable not found. The Secret Manager binding might have failed.")
 
 @app.route('/api/chat', methods=['POST'])
 def chat():
+    if not API_KEY:
+        return jsonify({'error': 'Backend not configured. Missing API_KEY.'}), 503
+
     try:
         data = request.json
         message = data.get('message')
@@ -52,6 +56,9 @@ def chat():
 
 @app.route('/api/synthesize', methods=['POST'])
 def synthesize():
+    if not API_KEY:
+        return jsonify({'error': 'Backend not configured. Missing API_KEY.'}), 503
+
     try:
         data = request.json
         content = data.get('content', '')

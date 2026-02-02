@@ -40,7 +40,7 @@ const INITIAL_PERSONA: Persona = {
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>(TabType.STRATEGY);
   const [accessLevel, setAccessLevel] = useState<AccessLevel>('AMBASSADOR');
-  // v15.8 - Optimistic default: Assume the environment variable is present or will be provided
+  // v15.9.2 - Default to true as inference is now handled via secure backend proxy
   const [hasKey, setHasKey] = useState<boolean>(true);
   const [persona, setPersona] = useState<Persona>(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
@@ -50,42 +50,20 @@ const App: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
 
   useEffect(() => {
-    // Check for key availability across different contexts
+    // Check for proxy availability
     const checkKeyStatus = async () => {
-      let isKeyPresent = false;
-      
-      // 1. Check baked-in process.env (Vite build time)
-      if (typeof process !== 'undefined' && process.env?.API_KEY) {
-        isKeyPresent = true;
-      }
-      
-      // 2. Check window.aistudio picker (Live environment)
-      if (!isKeyPresent && window.aistudio && typeof window.aistudio.hasSelectedApiKey === 'function') {
-        try {
-          isKeyPresent = await window.aistudio.hasSelectedApiKey();
-        } catch (e) {
-          console.warn("aistudio check failed", e);
-        }
-      }
-
-      // If we're in AMBASSADOR mode, we remain optimistic to avoid blocking UI
-      if (accessLevel === 'AMBASSADOR') {
-        setHasKey(true);
-      } else {
-        setHasKey(isKeyPresent);
-      }
+      // In the new architecture, the browser doesn't need a key. 
+      // We assume the proxy is nominal if we can reach it.
+      setHasKey(true);
     };
     
     checkKeyStatus();
-    const interval = setInterval(checkKeyStatus, 10000);
-    return () => clearInterval(interval);
   }, [accessLevel]);
 
   const handleOpenKeyPicker = async () => {
     try {
       if (window.aistudio && typeof window.aistudio.openSelectKey === 'function') {
         await window.aistudio.openSelectKey();
-        setHasKey(true);
       }
     } catch (err) {
       console.error("Manual key picker failed:", err);
@@ -93,7 +71,6 @@ const App: React.FC = () => {
   };
 
   const handleResetKey = () => {
-    setHasKey(false);
     handleOpenKeyPicker();
   };
 
@@ -143,7 +120,7 @@ const App: React.FC = () => {
       </main>
 
       <footer className="py-12 border-t border-slate-900 text-center text-slate-600 text-[9px] font-mono uppercase tracking-[0.3em]">
-        © 2026 Motokage • Open Architecture v15.8.2-STABLE • {accessLevel} MODE
+        © 2026 Motokage • Gold Standard Architecture v15.9.2-GOLD • {accessLevel} MODE
       </footer>
     </div>
   );

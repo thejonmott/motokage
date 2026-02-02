@@ -1,5 +1,5 @@
 steps:
-  # 1. Build the container image
+  # 1. Build and push the container image
   - name: 'gcr.io/cloud-builders/docker'
     entrypoint: 'bash'
     args:
@@ -9,7 +9,7 @@ steps:
         docker build -t $$IMAGE_PATH .
         docker push $$IMAGE_PATH
 
-  # 2. Deploy to Cloud Run with Secret Binding (motokage-api-key)
+  # 2. Deploy to Cloud Run: Resolve type conflict and bind Secret
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: 'bash'
     args:
@@ -17,12 +17,14 @@ steps:
       - |
         export IMAGE_PATH="us-central1-docker.pkg.dev/$PROJECT_ID/motokage-studio/app:$BRANCH_NAME"
         
+        # We explicitly remove the literal API_KEY to allow the secret-backed type change
         if [ "$BRANCH_NAME" == "staging" ]; then
           gcloud run deploy motokage-studio-staging \
             --image $$IMAGE_PATH \
             --region us-central1 \
             --platform managed \
             --allow-unauthenticated \
+            --remove-env-vars=API_KEY \
             --set-secrets="API_KEY=motokage-api-key:latest"
         else
           gcloud run deploy motokage-studio \
@@ -30,6 +32,7 @@ steps:
             --region us-central1 \
             --platform managed \
             --allow-unauthenticated \
+            --remove-env-vars=API_KEY \
             --set-secrets="API_KEY=motokage-api-key:latest"
         fi
 
