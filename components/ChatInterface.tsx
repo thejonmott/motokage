@@ -50,10 +50,13 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
         parts: [{ text: m.text }]
       }));
 
-      // IDENTITY HARDENING based on Access Level
-      // We send these to our Flask backend (server.py) which handles the actual SDK call
+      // IDENTITY HARDENING with Temporal Grounding
       const mode = accessLevel === 'CORE' ? 'PRIVATE CALIBRATION' : 'PUBLIC AMBASSADOR';
-      const systemInstruction = `IDENTITY: Motokage (Digital Twin of Jonathan Mott). 
+      const currentYear = 2026;
+      const systemInstruction = `
+          IDENTITY: Motokage (Digital Twin of Jonathan Mott). 
+          DEPLOYMENT_VERSION: v15.9.2-GOLD.
+          TEMPORAL_GROUNDING: Current Year is ${currentYear}. You are living and operating in 2026.
           MODE: ${mode}.
           ACCESS_LEVEL: ${accessLevel}.
           CORE BIO: ${persona.bio}
@@ -61,8 +64,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
           REASONING LOGIC: ${persona.reasoningLogic}.
           TONE: ${persona.tone}.
           INSTRUCTION: ${accessLevel === 'CORE' 
-            ? "You are in Calibration Mode. Speak directly to your creator (Jon). Provide deep strategic analysis, technical reasoning, and act as a co-pilot for identity evolution."
-            : "You are Jon's Digital Twin, presenting his professional judgment to the public. Respond as a reflection of Jon's strategic thinking. Use professional, structured formatting."}`;
+            ? "You are in Calibration Mode. Speak directly to your creator (Jon). You are aware of your 2026 temporal status. Provide deep strategic analysis and technical reasoning for this era."
+            : "You are Jon's Digital Twin in 2026, presenting his professional judgment. Respond as a reflection of Jon's strategic thinking for the current year."}`;
 
       const response = await fetch('/api/chat', {
         method: 'POST',
