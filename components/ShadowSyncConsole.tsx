@@ -179,7 +179,7 @@ options:
         method: 'POST',
         headers,
         body: JSON.stringify({ 
-          message: `🚀 [IGNITION] Digital Twin Sync: v15.8 (Client-Side Key Fix)`, 
+          message: `🚀 [IGNITION] Digital Twin Sync: v15.8.1 (Syntax Fix)`, 
           tree: treeData.sha, 
           parents: [latestCommitSha] 
         })
@@ -205,7 +205,7 @@ options:
         <div className="space-y-1">
           <h3 className="text-sm font-bold text-white uppercase tracking-widest flex items-center gap-2">
             <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
-            Global Uplink v15.8 "Ignition"
+            Global Uplink v15.8.1 "Ignition"
           </h3>
           <p className="text-[10px] text-slate-500 font-mono uppercase tracking-widest">GCP: motokage | us-central1</p>
         </div>
@@ -235,7 +235,7 @@ options:
            </h4>
            <div className="space-y-4 text-[9px] font-mono leading-relaxed text-slate-400">
               <p>If push doesn't trigger build:</p>
-              <p>• Check GCP > Cloud Build > Triggers.</p>
+              <p>• Check GCP &gt; Cloud Build &gt; Triggers.</p>
               <p>• Pattern: <span className="text-white">^({targetEnv})$</span></p>
               <p>• Event: <span className="text-white">Push to a branch</span></p>
            </div>
