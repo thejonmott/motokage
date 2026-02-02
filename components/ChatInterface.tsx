@@ -1,7 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Persona, Message, AccessLevel } from '../types';
-import { GoogleGenAI } from "@google/genai";
 
 interface ChatInterfaceProps {
   persona: Persona;
@@ -46,13 +45,13 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
     setActiveSubLog(accessLevel === 'CORE' ? 'Neural Sync Active...' : 'Uplinking to Proxy...');
 
     try {
-      // GUIDELINE: Format history into parts compatible with SDK
-      const historyParts = messages.map(m => ({
+      const history = messages.map(m => ({
         role: m.role,
         parts: [{ text: m.text }]
       }));
 
       // IDENTITY HARDENING based on Access Level
+      // We send these to our Flask backend (server.py) which handles the actual SDK call
       const mode = accessLevel === 'CORE' ? 'PRIVATE CALIBRATION' : 'PUBLIC AMBASSADOR';
       const systemInstruction = `IDENTITY: Motokage (Digital Twin of Jonathan Mott). 
           MODE: ${mode}.
@@ -65,41 +64,36 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
             ? "You are in Calibration Mode. Speak directly to your creator (Jon). Provide deep strategic analysis, technical reasoning, and act as a co-pilot for identity evolution."
             : "You are Jon's Digital Twin, presenting his professional judgment to the public. Respond as a reflection of Jon's strategic thinking. Use professional, structured formatting."}`;
 
-      // GUIDELINE: Create a new GoogleGenAI instance right before making an API call
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      
-      // GUIDELINE: Use ai.models.generateContent to query GenAI with model and prompt
-      const response = await ai.models.generateContent({
-        model: accessLevel === 'CORE' ? 'gemini-3-pro-preview' : 'gemini-3-flash-preview',
-        contents: [
-          ...historyParts,
-          { role: 'user', parts: [{ text: currentInput }] }
-        ],
-        config: {
-          systemInstruction: systemInstruction,
-          temperature: 0.7,
-        }
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'X-Access-Level': accessLevel 
+        },
+        body: JSON.stringify({ 
+          message: currentInput, 
+          history, 
+          systemInstruction 
+        })
       });
 
-      // GUIDELINE: Extract text output using the .text property (not a method)
-      const responseText = response.text || "Neural connection stable, but response buffer empty.";
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error || "Backend Uplink Failure");
+      }
+      
+      const data = await response.json();
 
       setMessages(prev => [...prev, { 
         role: 'model', 
-        text: responseText, 
+        text: data.text || "Neural connection stable, but response buffer empty.", 
         timestamp: new Date() 
       }]);
     } catch (error: any) {
       console.error("Cognitive Uplink Failure:", error);
-      
-      // GUIDELINE: If the request fails with "Requested entity was not found", reset the key selection state
-      if (error?.message?.includes("Requested entity was not found")) {
-        onResetKey();
-      }
-
       setMessages(prev => [...prev, { 
         role: 'model', 
-        text: `[SYSTEM_ERROR]: ${error.message || "The cognitive bridge encountered an interruption. Please re-verify identity if problems persist."}`, 
+        text: `[SYSTEM_ERROR]: ${error.message || "The cognitive bridge encountered an interruption. Check server logs."}`, 
         timestamp: new Date() 
       }]);
     } finally {
