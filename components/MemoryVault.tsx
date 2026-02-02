@@ -1,7 +1,6 @@
 
 import React, { useState } from 'react';
 import { Persona, AccessLevel } from '../types';
-import { GoogleGenAI, Type } from '@google/genai';
 
 interface MemoryVaultProps {
   persona: Persona;
@@ -24,49 +23,15 @@ const MemoryVault: React.FC<MemoryVaultProps> = ({ persona, setPersona, accessLe
     if (accessLevel !== 'CORE') return;
     setIsSynthesizing(true);
     try {
-      // Always initialize with API key from process.env.API_KEY exclusively
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      const prompt = `Synthesize these artifacts into the MOSAIC of Jonathan Mott.
-      Focus on professional strategic artifacts and evidence.
-      Content to synthesize: ${content}`;
-      
-      const response = await ai.models.generateContent({ 
-        model: 'gemini-3-flash-preview', 
-        contents: prompt, 
-        config: { 
-          responseMimeType: 'application/json',
-          // Use responseSchema for robust JSON output as per best practices
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              newShards: {
-                type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    title: { type: Type.STRING },
-                    category: { 
-                      type: Type.STRING,
-                      description: 'One of: axiom, chronos, echo, logos, ethos'
-                    },
-                    content: { type: Type.STRING },
-                    sensitivity: { 
-                      type: Type.STRING,
-                      description: 'Either PRIVATE or PUBLIC'
-                    }
-                  },
-                  required: ['title', 'category', 'content', 'sensitivity']
-                }
-              }
-            },
-            required: ['newShards']
-          }
-        } 
+      const response = await fetch('/api/synthesize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content })
       });
 
-      // Safely access .text property directly
-      const jsonStr = response.text?.trim() || '{}';
-      const result = JSON.parse(jsonStr);
+      if (!response.ok) throw new Error("Synthesis failure");
+      const result = await response.json();
+      
       if (result.newShards) {
         const mapped = result.newShards.map((s: any) => ({ ...s, id: `art_${Date.now()}_${Math.random()}`, active: true }));
         setPersona({ ...persona, memoryShards: [...mapped, ...persona.memoryShards] });
@@ -82,9 +47,9 @@ const MemoryVault: React.FC<MemoryVaultProps> = ({ persona, setPersona, accessLe
   return (
     <div className="space-y-12 animate-in fade-in duration-700 max-w-6xl mx-auto pb-20">
       <div className="flex justify-between items-end px-4">
-        <div className="space-y-2">
+        <div className="space-y-2 text-left">
           <h2 className="text-5xl font-bold font-heading text-white">The <span className="text-indigo-400 italic">Mosaic</span></h2>
-          <p className="text-[10px] text-slate-500 uppercase tracking-[0.3em] font-mono">Evidence, Artifacts, and Chronological Reflections</p>
+          <p className="text-[10px] text-slate-500 uppercase tracking-[0.3em] font-mono">Evidence-Based Identity Retrieval (Secure)</p>
         </div>
         {accessLevel === 'CORE' && (
           <button onClick={() => setIsIngestMode(!isIngestMode)} className="px-8 py-4 bg-indigo-600 text-white rounded-2xl text-[10px] font-bold uppercase tracking-widest shadow-xl">Ingest Artifact</button>
@@ -93,14 +58,14 @@ const MemoryVault: React.FC<MemoryVaultProps> = ({ persona, setPersona, accessLe
 
       {isIngestMode ? (
         <div className="bg-slate-900 border border-slate-800 rounded-[3rem] p-12 space-y-8 shadow-2xl animate-in zoom-in-95">
-           <textarea value={ingestContent} onChange={e => setIngestContent(e.target.value)} placeholder="Paste evidence artifacts..." className="w-full h-64 bg-slate-950 border border-slate-800 rounded-2xl p-8 text-xs font-mono text-indigo-300 outline-none resize-none" />
+           <textarea value={ingestContent} onChange={e => setIngestContent(e.target.value)} placeholder="Paste evidence artifacts for backend synthesis..." className="w-full h-64 bg-slate-950 border border-slate-800 rounded-2xl p-8 text-xs font-mono text-indigo-300 outline-none resize-none" />
            <div className="flex gap-4">
-             <button onClick={() => executeSynthesis(ingestContent)} disabled={isSynthesizing} className="flex-grow bg-indigo-600 text-white py-5 rounded-2xl font-bold text-[10px] uppercase tracking-widest">{isSynthesizing ? 'Etching Mosaic...' : 'Confirm Ingestion'}</button>
+             <button onClick={() => executeSynthesis(ingestContent)} disabled={isSynthesizing} className="flex-grow bg-indigo-600 text-white py-5 rounded-2xl font-bold text-[10px] uppercase tracking-widest">{isSynthesizing ? 'Secure Synthesis in Progress...' : 'Confirm Ingestion'}</button>
              <button onClick={() => setIsIngestMode(false)} className="px-10 py-5 bg-slate-950 text-slate-500 rounded-2xl text-[10px] font-bold uppercase tracking-widest">Cancel</button>
            </div>
         </div>
       ) : (
-        <div className="grid md:grid-cols-3 gap-8">
+        <div className="grid md:grid-cols-3 gap-8 text-left">
           {filteredShards.map(shard => (
             <div key={shard.id} className="p-10 bg-slate-950 border border-slate-900 rounded-[2.5rem] hover:border-indigo-500/30 transition-all group shadow-xl flex flex-col min-h-[300px]">
               <div className="flex items-center gap-3 mb-8">
