@@ -1,6 +1,8 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Persona, Message, AccessLevel } from '../types';
+// Fix: Import GoogleGenAI from the official SDK
+import { GoogleGenAI } from "@google/genai";
 
 interface ChatInterfaceProps {
   persona: Persona;
@@ -19,9 +21,23 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
   const [isVerifyingLink, setIsVerifyingLink] = useState(true);
   const [activeSubLog, setActiveSubLog] = useState<string>('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const isFirstRender = useRef(true);
 
   const scrollToBottom = () => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); };
-  useEffect(() => { scrollToBottom(); }, [messages, isLoading]);
+  
+  // Auto-scroll window to top on mount
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
+  // Only scroll to bottom on message updates, skipping the initial mount to keep the view at the top
+  useEffect(() => { 
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    scrollToBottom(); 
+  }, [messages, isLoading]);
 
   const QUICK_DIRECTIVES = accessLevel === 'CORE' 
     ? ["Analyze our current strategic gap.", "Propose a new execution mandate.", "Calibrate tone for the next synthesis.", "Summarize recent private shards."]
@@ -45,6 +61,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
     setActiveSubLog(accessLevel === 'CORE' ? 'Neural Sync Active...' : 'Uplinking to Proxy...');
 
     try {
+      // Fix: Create a new GoogleGenAI instance right before the call to ensure it always uses the most up-to-date API key.
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      
       const history = messages.map(m => ({
         role: m.role,
         parts: [{ text: m.text }]
@@ -74,36 +93,39 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
             ? "You are in Calibration Mode. Speak directly to your creator (Jon). You are aware of your 2026 temporal status and the exact current date. Provide deep strategic analysis and technical reasoning for this era."
             : "You are Jon's Digital Twin in 2026, presenting his professional judgment. Respond as a reflection of Jon's strategic thinking for the current year and date."}`;
 
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'X-Access-Level': accessLevel 
-        },
-        body: JSON.stringify({ 
-          message: currentInput, 
-          history, 
-          systemInstruction 
-        })
+      // Fix: Use ai.models.generateContent directly in the frontend instead of fetch.
+      const modelName = accessLevel === 'CORE' ? 'gemini-3-pro-preview' : 'gemini-3-flash-preview';
+      const response = await ai.models.generateContent({
+        model: modelName,
+        contents: [
+          ...history,
+          { role: 'user', parts: [{ text: currentInput }] }
+        ],
+        config: {
+          systemInstruction: systemInstruction,
+          temperature: 1,
+        }
       });
 
-      if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.error || "Backend Uplink Failure");
-      }
-      
-      const data = await response.json();
+      // Fix: The text property directly returns the string output (do not use text()).
+      const text = response.text;
 
       setMessages(prev => [...prev, { 
         role: 'model', 
-        text: data.text || "Neural connection stable, but response buffer empty.", 
+        text: text || "Neural connection stable, but response buffer empty.", 
         timestamp: new Date() 
       }]);
     } catch (error: any) {
       console.error("Cognitive Uplink Failure:", error);
+      
+      // Fix: If the request fails with "Requested entity was not found.", reset key selection state and prompt user to select a key again.
+      if (error.message?.includes("Requested entity was not found.")) {
+        onConnectKey();
+      }
+
       setMessages(prev => [...prev, { 
         role: 'model', 
-        text: `[SYSTEM_ERROR]: ${error.message || "The cognitive bridge encountered an interruption. Check server logs."}`, 
+        text: `[SYSTEM_ERROR]: ${error.message || "The cognitive bridge encountered an interruption."}`, 
         timestamp: new Date() 
       }]);
     } finally {
@@ -187,7 +209,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
       <div className={`flex-grow flex flex-col bg-slate-950 rounded-[3.5rem] border overflow-hidden shadow-2xl transition-all duration-500 ${accessLevel === 'CORE' ? 'border-purple-500/40 bg-slate-900/20' : 'border-indigo-500/20'}`}>
         <div className="bg-slate-900/50 backdrop-blur-xl px-12 py-8 flex items-center justify-between border-b border-slate-800">
           <div className="flex items-center gap-6">
-            <div className={`w-12 h-12 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center text-2xl font-bold text-white shadow-xl italic ${accessLevel === 'CORE' ? 'border-purple-500/50 text-purple-400' : ''}`}>影</div>
+            <div className={`w-12 h-12 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center text-2xl font-bold text-white shadow-xl ${accessLevel === 'CORE' ? 'border-purple-500/50 text-purple-400' : ''}`}>影</div>
             <div className="text-left">
               <div className="text-base font-bold text-white uppercase tracking-widest">Motokage <span className="text-slate-500 font-light">| {accessLevel === 'CORE' ? 'Calibration Mode' : "Jon's Twin"}</span></div>
               <div className="text-[8px] text-slate-500 font-mono uppercase tracking-[0.3em]">{accessLevel === 'CORE' ? 'Hardware-Bound Neural Handshake' : 'Cognitive Reflection Service'}</div>
@@ -207,7 +229,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
           {messages.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-center space-y-10 py-10">
               <div className="space-y-6">
-                <div className={`w-24 h-24 mx-auto rounded-full border flex items-center justify-center text-4xl italic bg-slate-900/40 text-white shadow-2xl transition-all ${accessLevel === 'CORE' ? 'border-purple-500/50 shadow-purple-500/10 scale-110' : 'border-slate-800'}`}>影</div>
                 <div className="space-y-3">
                   <h4 className="text-[16px] font-bold text-white uppercase tracking-[0.3em]">
                     {accessLevel === 'CORE' ? "Ready for Calibration." : "Hello. I am Motokage."}
@@ -272,9 +293,10 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
             <button 
               onClick={() => handleSend()}
               disabled={isLoading || !input.trim()} 
-              className={`h-[64px] px-10 rounded-[2rem] font-bold text-[10px] uppercase tracking-widest shadow-2xl transition-all disabled:opacity-50 shrink-0 ${accessLevel === 'CORE' ? 'bg-purple-600 hover:bg-purple-700 shadow-purple-500/20' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-500/20'} text-white`}
+              className={`h-[64px] px-10 rounded-[2rem] font-bold text-[10px] uppercase tracking-widest shadow-2xl transition-all disabled:opacity-50 shrink-0 flex items-center gap-3 ${accessLevel === 'CORE' ? 'bg-purple-600 hover:bg-purple-700 shadow-purple-500/20' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-500/20'} text-white`}
             >
-              Uplink
+              Send
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polyline points="22 2 15 22 11 13 2 9 22 2"/></svg>
             </button>
           </div>
         </div>

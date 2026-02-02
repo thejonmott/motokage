@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Persona } from '../types';
 
@@ -49,6 +50,14 @@ const ArchitectureView: React.FC<ArchitectureViewProps> = ({ isCloudSynced }) =>
           </h2>
           <p className="text-lg text-slate-500 max-w-3xl mx-auto font-light leading-relaxed font-mono uppercase tracking-widest text-xs">
             Showcasing the technical reasoning and cloud-native architecture behind a state-of-the-art digital reflection.
+          </p>
+        </div>
+
+        {/* Purpose Statement: Blueprint Note Style */}
+        <div className="max-w-3xl mx-auto py-8 border-y border-slate-900/50 mt-4">
+          <p className="text-[10px] text-slate-400 leading-relaxed font-mono uppercase tracking-[0.25em]">
+            <span className="text-indigo-500 font-bold mr-4">[PURPOSE]</span>
+            To architect a high-fidelity cognitive shadow—a collaborative partner for internal strategic ideation and a hardened digital ambassador for professional representation.
           </p>
         </div>
       </section>

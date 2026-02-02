@@ -126,7 +126,7 @@ const App: React.FC = () => {
       </main>
 
       <footer className="py-12 border-t border-slate-900 text-center text-slate-600 text-[9px] font-mono uppercase tracking-[0.3em]">
-        © 2026 Motokage • Gold Standard Architecture v15.9.2-GOLD • {accessLevel} MODE
+        © 2026 Motokage • Enterprise Architecture Stack v15.9.2-GOLD • {accessLevel} MODE
       </footer>
     </div>
   );
