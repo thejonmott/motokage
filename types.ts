@@ -79,7 +79,7 @@ declare global {
   }
 
   interface Window {
-    // Removed readonly modifier to resolve "identical modifiers" error with global scope declarations.
+    // Removed readonly modifier to match the platform's injected global scope declaration and resolve modifier conflict.
     aistudio: AIStudio;
   }
 }

@@ -29,7 +29,7 @@ const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona }) => {
 
   const sourceFiles = [
     'App.tsx', 'types.ts', 'index.tsx', 'metadata.json', 'index.html', 'package.json', 'vite.config.ts', 'tsconfig.json', '.dockerignore',
-    'server.py', 'requirements.txt',
+    'server.py', 'requirements.txt', 'README.md',
     'components/Header.tsx', 'components/PersonaForm.tsx', 'components/ArchitectureView.tsx',
     'components/MemoryVault.tsx', 'components/NexusView.tsx', 'components/ChatInterface.tsx',
     'components/ComparisonView.tsx', 'components/ShadowSyncConsole.tsx', 'components/StagingView.tsx',
