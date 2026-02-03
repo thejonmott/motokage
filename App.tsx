@@ -10,7 +10,7 @@ import MandatesView from './components/MandatesView';
 import OriginStoryView from './components/OriginStoryView';
 import DashboardView from './components/DashboardView';
 import DocumentationView from './components/DocumentationView';
-import { GoogleGenAI, LiveServerMessage, Modality } from "@google/genai";
+import { GoogleGenAI, LiveServerMessage, Modality, Type } from "@google/genai";
 
 const STORAGE_KEY = 'motokage_studio_v2_live';
 
@@ -183,15 +183,16 @@ const App: React.FC = () => {
             scriptProcessor.connect(inputCtx.destination);
           },
           onmessage: async (msg: LiveServerMessage) => {
-            if (msg.serverContent?.modelTurn?.parts[0]?.inlineData?.data) {
-              const audioBuffer = await decodeAudioData(decode(msg.serverContent.modelTurn.parts[0].inlineData.data), outputCtx, 24000, 1);
+            const parts = msg.serverContent?.modelTurn?.parts;
+            if (parts && parts.length > 0 && parts[0].inlineData?.data) {
+              const audioBuffer = await decodeAudioData(decode(parts[0].inlineData.data), outputCtx, 24000, 1);
               const source = outputCtx.createBufferSource();
               source.buffer = audioBuffer;
               source.connect(outputCtx.destination);
               source.start();
               neuralSourcesRef.current.add(source);
             }
-            if (msg.toolCall) {
+            if (msg.toolCall && msg.toolCall.functionCalls) {
               for (const fc of msg.toolCall.functionCalls) {
                 if (fc.name === 'update_life_ledger') {
                   const args = fc.args as any;
@@ -224,12 +225,12 @@ const App: React.FC = () => {
             functionDeclarations: [{
               name: 'update_life_ledger',
               parameters: {
-                type: 'OBJECT',
+                type: Type.OBJECT,
                 properties: {
-                  date: { type: 'STRING' },
-                  event: { type: 'STRING' },
-                  details: { type: 'STRING' },
-                  impact: { type: 'NUMBER' }
+                  date: { type: Type.STRING },
+                  event: { type: Type.STRING },
+                  details: { type: Type.STRING },
+                  impact: { type: Type.NUMBER }
                 },
                 required: ['date', 'event']
               }
