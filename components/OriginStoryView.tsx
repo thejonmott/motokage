@@ -13,6 +13,7 @@ const OriginStoryView: React.FC<OriginStoryViewProps> = ({ persona, setPersona, 
   const [isAddingFact, setIsAddingFact] = useState(false);
   const [isIngestingResume, setIsIngestingResume] = useState(false);
   const [resumeText, setResumeText] = useState('');
+  const [resumeFile, setResumeFile] = useState<{ data: string; mimeType: string } | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [editingFactId, setEditingFactId] = useState<string | null>(null);
   
@@ -39,6 +40,20 @@ const OriginStoryView: React.FC<OriginStoryViewProps> = ({ persona, setPersona, 
   });
 
   const isLocked = accessLevel !== 'CORE';
+
+  // --- FILE HANDLER ---
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64 = (reader.result as string).split(',')[1];
+        setResumeFile({ data: base64, mimeType: file.type });
+        setResumeText(`[PDF_ARTIFACT: ${file.name}]`);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   // --- NARRATIVE ARCHITECT LOGIC ---
   const startNarrativeRecording = async () => {
@@ -94,17 +109,23 @@ const OriginStoryView: React.FC<OriginStoryViewProps> = ({ persona, setPersona, 
 
   // --- RESUME INGESTION LOGIC ---
   const handleProcessResume = async () => {
-    if (!resumeText.trim() || isProcessing) return;
+    if ((!resumeText.trim() && !resumeFile) || isProcessing) return;
     setIsProcessing(true);
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     try {
-      const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: `Analyze the following resume for Jonathan Mott and:
+      const parts: any[] = [];
+      if (resumeFile) {
+        parts.push({ inlineData: resumeFile });
+      }
+      parts.push({ text: `Analyze the provided resume document or text for Jonathan Mott and:
         1. Extract key career milestones and education as a list of facts for a life ledger.
         2. Infer Jon's professional DNA: a high-fidelity bio (concise, professional, visionary), core values (3-5 items), preferred strategic tone, and reasoning logic style.
         
-        Resume text: ${resumeText}`,
+        ${resumeText && !resumeFile ? `Resume text: ${resumeText}` : ''}` });
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: { parts },
         config: { 
           responseMimeType: "application/json",
           responseSchema: {
@@ -157,6 +178,7 @@ const OriginStoryView: React.FC<OriginStoryViewProps> = ({ persona, setPersona, 
       
       setIsIngestingResume(false);
       setResumeText('');
+      setResumeFile(null);
     } catch (err) {
       console.error("Resume ingestion failure:", err);
       alert("Cognitive Bridge Failure: Resume analysis could not be completed.");
@@ -352,27 +374,51 @@ const OriginStoryView: React.FC<OriginStoryViewProps> = ({ persona, setPersona, 
                   <h3 className="text-xl font-bold text-white uppercase tracking-tight font-heading">Resume Ingestion Gateway</h3>
                   <p className="text-[9px] font-mono text-blue-400 uppercase tracking-widest mt-1">Extracting Career DNA & Strategic Milestones</p>
                 </div>
-                <button onClick={() => setIsIngestingResume(false)} className="text-slate-500 hover:text-white bg-slate-950 p-3 rounded-xl border border-slate-800 transition-all">✕</button>
+                <button onClick={() => { setIsIngestingResume(false); setResumeFile(null); }} className="text-slate-500 hover:text-white bg-slate-950 p-3 rounded-xl border border-slate-800 transition-all">✕</button>
               </div>
-              <div className="space-y-4 text-left">
-                <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Resume Plain Text</label>
-                <textarea 
-                  value={resumeText}
-                  onChange={e => setResumeText(e.target.value)}
-                  placeholder="Paste the full plain text of the resume here... The engine will infer identity DNA and chronological facts."
-                  className="w-full h-64 bg-slate-950 border border-slate-800 rounded-[2rem] px-8 py-8 text-xs font-mono text-blue-300 outline-none resize-none no-scrollbar focus:border-blue-500 transition-all"
-                />
+              
+              <div className="grid md:grid-cols-2 gap-8">
+                <div className="space-y-4 text-left">
+                  <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest block">Resume Plain Text</label>
+                  <textarea 
+                    value={resumeText}
+                    onChange={e => { setResumeText(e.target.value); if(resumeFile) setResumeFile(null); }}
+                    placeholder="Paste the full plain text of the resume here... The engine will infer identity DNA and chronological facts."
+                    className="w-full h-48 bg-slate-950 border border-slate-800 rounded-[2rem] px-8 py-8 text-xs font-mono text-blue-300 outline-none resize-none no-scrollbar focus:border-blue-500 transition-all"
+                  />
+                </div>
+                <div className="space-y-4 text-left flex flex-col">
+                  <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest block">Document Artifact (PDF)</label>
+                  <div className="flex-grow flex flex-col items-center justify-center border-2 border-dashed border-slate-800 rounded-[2rem] hover:border-blue-500/50 transition-all p-8 relative group">
+                    <input 
+                      type="file" 
+                      accept="application/pdf"
+                      onChange={handleFileChange}
+                      className="absolute inset-0 opacity-0 cursor-pointer"
+                    />
+                    <div className="text-center space-y-4 pointer-events-none">
+                      <div className={`w-16 h-16 rounded-2xl mx-auto flex items-center justify-center transition-all ${resumeFile ? 'bg-blue-600 text-white' : 'bg-slate-900 text-slate-600'}`}>
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold text-white uppercase tracking-widest">{resumeFile ? 'PDF Ready for Analysis' : 'Upload Resume PDF'}</p>
+                        <p className="text-[8px] text-slate-500 font-mono mt-1">{resumeFile ? 'Document cached in memory' : 'Drop file or click to select'}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
+
               <div className="flex gap-4 pt-4">
                 <button 
                   onClick={handleProcessResume}
-                  disabled={isProcessing || !resumeText.trim()}
+                  disabled={isProcessing || (!resumeText.trim() && !resumeFile)}
                   className="flex-grow bg-blue-600 text-white py-5 rounded-2xl font-bold text-[11px] uppercase tracking-[0.3em] shadow-[0_10px_30px_rgba(59,130,246,0.2)] hover:bg-blue-500 hover:scale-[1.01] transition-all disabled:opacity-50"
                 >
                   {isProcessing ? 'Analyzing Career DNA...' : 'Execute DNA Ingestion'}
                 </button>
                 <button 
-                  onClick={() => setIsIngestingResume(false)} 
+                  onClick={() => { setIsIngestingResume(false); setResumeFile(null); }} 
                   className="px-12 py-5 bg-slate-950 text-slate-600 rounded-2xl text-[10px] font-bold uppercase tracking-widest hover:text-slate-400 transition-colors"
                 >
                   Discard
