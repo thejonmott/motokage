@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useRef } from 'react';
 import { Persona, OriginFact, OriginCategory, Relationship, AccessLevel } from '../types';
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, Type } from "@google/genai";
 
 interface OriginStoryViewProps {
   persona: Persona;
@@ -89,6 +89,79 @@ const OriginStoryView: React.FC<OriginStoryViewProps> = ({ persona, setPersona, 
       console.error("Extraction fail:", e); 
     } finally {
       setIsExtracting(false);
+    }
+  };
+
+  // --- RESUME INGESTION LOGIC ---
+  const handleProcessResume = async () => {
+    if (!resumeText.trim() || isProcessing) return;
+    setIsProcessing(true);
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    try {
+      const response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: `Analyze the following resume for Jonathan Mott and:
+        1. Extract key career milestones and education as a list of facts for a life ledger.
+        2. Infer Jon's professional DNA: a high-fidelity bio (concise, professional, visionary), core values (3-5 items), preferred strategic tone, and reasoning logic style.
+        
+        Resume text: ${resumeText}`,
+        config: { 
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              newFacts: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    date: { type: Type.STRING, description: "Formatted date string" },
+                    event: { type: Type.STRING, description: "Concise headline of the milestone" },
+                    significance: { type: Type.STRING, description: "Why this matters to his strategic journey" },
+                    details: { type: Type.STRING, description: "High-fidelity details of the role or achievement" },
+                    category: { type: Type.STRING, enum: ["CAREER", "MILESTONE", "PERSONAL", "RELATIONAL"] },
+                    impact: { type: Type.NUMBER, description: "Impact score from 1-10" }
+                  },
+                  required: ["date", "event", "significance", "details", "category", "impact"]
+                }
+              },
+              dnaUpdates: {
+                type: Type.OBJECT,
+                properties: {
+                  bio: { type: Type.STRING },
+                  coreValues: { type: Type.ARRAY, items: { type: Type.STRING } },
+                  tone: { type: Type.STRING },
+                  reasoningLogic: { type: Type.STRING }
+                },
+                required: ["bio", "coreValues", "tone", "reasoningLogic"]
+              }
+            },
+            required: ["newFacts", "dnaUpdates"]
+          }
+        }
+      });
+      
+      const data = JSON.parse(response.text || '{}');
+      
+      setPersona(prev => ({
+        ...prev,
+        bio: data.dnaUpdates?.bio || prev.bio,
+        coreValues: data.dnaUpdates?.coreValues || prev.coreValues,
+        tone: data.dnaUpdates?.tone || prev.tone,
+        reasoningLogic: data.dnaUpdates?.reasoningLogic || prev.reasoningLogic,
+        originFacts: [
+          ...prev.originFacts,
+          ...(data.newFacts || []).map((f: any) => ({ ...f, id: `res_${Date.now()}_${Math.random()}` }))
+        ].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+      }));
+      
+      setIsIngestingResume(false);
+      setResumeText('');
+    } catch (err) {
+      console.error("Resume ingestion failure:", err);
+      alert("Cognitive Bridge Failure: Resume analysis could not be completed.");
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -254,7 +327,7 @@ const OriginStoryView: React.FC<OriginStoryViewProps> = ({ persona, setPersona, 
           <div className="flex gap-4">
             <button 
               onClick={() => setIsIngestingResume(!isIngestingResume)}
-              className="px-6 py-3 bg-slate-900 border border-slate-800 text-blue-400 rounded-xl text-[9px] font-bold uppercase tracking-widest hover:border-blue-500/50 transition-all flex items-center gap-2"
+              className={`px-6 py-3 border rounded-xl text-[9px] font-bold uppercase tracking-widest transition-all flex items-center gap-2 ${isIngestingResume ? 'bg-blue-600 border-blue-500 text-white' : 'bg-slate-900 border-slate-800 text-blue-400 hover:border-blue-500/50'}`}
             >
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
               Ingest Resume
@@ -268,6 +341,46 @@ const OriginStoryView: React.FC<OriginStoryViewProps> = ({ persona, setPersona, 
           </div>
         )}
       </section>
+
+      {/* Resume Ingestion Panel */}
+      {isIngestingResume && (
+        <div className="animate-in slide-in-from-top-4 duration-500 mb-12">
+           <div className="p-10 bg-slate-900 border border-blue-500/30 rounded-[3.5rem] shadow-[0_0_50px_rgba(59,130,246,0.1)] space-y-8 relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-blue-500 opacity-50"></div>
+              <div className="flex justify-between items-center border-b border-slate-800 pb-6">
+                <div className="text-left">
+                  <h3 className="text-xl font-bold text-white uppercase tracking-tight font-heading">Resume Ingestion Gateway</h3>
+                  <p className="text-[9px] font-mono text-blue-400 uppercase tracking-widest mt-1">Extracting Career DNA & Strategic Milestones</p>
+                </div>
+                <button onClick={() => setIsIngestingResume(false)} className="text-slate-500 hover:text-white bg-slate-950 p-3 rounded-xl border border-slate-800 transition-all">✕</button>
+              </div>
+              <div className="space-y-4 text-left">
+                <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Resume Plain Text</label>
+                <textarea 
+                  value={resumeText}
+                  onChange={e => setResumeText(e.target.value)}
+                  placeholder="Paste the full plain text of the resume here... The engine will infer identity DNA and chronological facts."
+                  className="w-full h-64 bg-slate-950 border border-slate-800 rounded-[2rem] px-8 py-8 text-xs font-mono text-blue-300 outline-none resize-none no-scrollbar focus:border-blue-500 transition-all"
+                />
+              </div>
+              <div className="flex gap-4 pt-4">
+                <button 
+                  onClick={handleProcessResume}
+                  disabled={isProcessing || !resumeText.trim()}
+                  className="flex-grow bg-blue-600 text-white py-5 rounded-2xl font-bold text-[11px] uppercase tracking-[0.3em] shadow-[0_10px_30px_rgba(59,130,246,0.2)] hover:bg-blue-500 hover:scale-[1.01] transition-all disabled:opacity-50"
+                >
+                  {isProcessing ? 'Analyzing Career DNA...' : 'Execute DNA Ingestion'}
+                </button>
+                <button 
+                  onClick={() => setIsIngestingResume(false)} 
+                  className="px-12 py-5 bg-slate-950 text-slate-600 rounded-2xl text-[10px] font-bold uppercase tracking-widest hover:text-slate-400 transition-colors"
+                >
+                  Discard
+                </button>
+              </div>
+           </div>
+        </div>
+      )}
 
       {/* Main Content Grid */}
       <div className="grid lg:grid-cols-12 gap-16 relative">
