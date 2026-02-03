@@ -174,9 +174,9 @@ const OriginStoryView: React.FC<OriginStoryViewProps> = ({ persona, setPersona, 
             </button>
             <button 
               onClick={() => setIsAddingFact(!isAddingFact)}
-              className="px-6 py-3 bg-blue-600 text-white rounded-xl text-[9px] font-bold uppercase tracking-widest shadow-xl hover:bg-blue-500 transition-all"
+              className={`px-6 py-3 rounded-xl text-[9px] font-bold uppercase tracking-widest shadow-xl transition-all ${isAddingFact ? 'bg-slate-800 text-slate-400' : 'bg-blue-600 text-white hover:bg-blue-500'}`}
             >
-              Append Memory
+              {isAddingFact ? 'Cancel Append' : 'Append Memory'}
             </button>
           </div>
         )}
@@ -192,6 +192,111 @@ const OriginStoryView: React.FC<OriginStoryViewProps> = ({ persona, setPersona, 
             <div className="absolute left-[7.5rem] top-0 bottom-0 w-[2px] bg-gradient-to-b from-emerald-500/50 via-slate-800 to-transparent hidden md:block"></div>
             
             <div className="space-y-20">
+              
+              {/* --- ENHANCED APPEND MEMORY FORM --- */}
+              {isAddingFact && (
+                <div className="ml-[6rem] animate-in slide-in-from-top-4 duration-500 mb-20">
+                  <div className="p-10 bg-slate-900 border border-emerald-500/30 rounded-[3rem] shadow-[0_0_50px_rgba(16,185,129,0.1)] space-y-8 relative overflow-hidden group">
+                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 via-blue-500 to-emerald-500 opacity-50"></div>
+                    
+                    <div className="flex justify-between items-start mb-2">
+                       <h3 className="text-xl font-bold text-white uppercase tracking-tight font-heading">New Chronological Node</h3>
+                       <div className="text-[9px] font-mono text-emerald-400 uppercase tracking-widest">Awaiting Calibration</div>
+                    </div>
+
+                    <div className="grid md:grid-cols-2 gap-8 text-left">
+                      <div className="space-y-3">
+                        <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Full Date</label>
+                        <input 
+                          type="text" 
+                          placeholder="e.g. October 12, 2024" 
+                          value={newFact.date}
+                          onChange={e => setNewFact({...newFact, date: e.target.value})}
+                          className="w-full bg-slate-950 border border-slate-800 rounded-xl px-5 py-4 text-xs text-white outline-none focus:border-emerald-500 transition-colors"
+                        />
+                      </div>
+                      <div className="space-y-3">
+                        <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Event Headline (Title)</label>
+                        <input 
+                          type="text" 
+                          placeholder="What happened?" 
+                          value={newFact.event}
+                          onChange={e => setNewFact({...newFact, event: e.target.value})}
+                          className="w-full bg-slate-950 border border-slate-800 rounded-xl px-5 py-4 text-xs text-white outline-none focus:border-emerald-500 transition-colors"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-4 text-left">
+                      <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Weight Score (Impact 1-10)</label>
+                      <div className="flex items-center gap-4">
+                        <div className="flex-grow flex gap-1 h-8 items-end">
+                           {[...Array(10)].map((_, i) => (
+                             <button 
+                                key={i}
+                                onClick={() => setNewFact({...newFact, impact: i + 1})}
+                                className={`flex-grow rounded-sm transition-all duration-300 ${i < (newFact.impact || 0) ? 'bg-emerald-500' : 'bg-slate-800'} hover:scale-y-125 h-full`}
+                             ></button>
+                           ))}
+                        </div>
+                        <span className="text-xl font-bold font-mono text-white min-w-[2ch]">{newFact.impact}</span>
+                      </div>
+                    </div>
+
+                    <div className="grid md:grid-cols-2 gap-8 text-left">
+                      <div className="space-y-3">
+                        <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Significance Anchor</label>
+                        <input 
+                          type="text" 
+                          placeholder="Why is this meaningful?" 
+                          value={newFact.significance}
+                          onChange={e => setNewFact({...newFact, significance: e.target.value})}
+                          className="w-full bg-slate-950 border border-slate-800 rounded-xl px-5 py-4 text-xs text-emerald-400 font-mono italic outline-none focus:border-emerald-500"
+                        />
+                      </div>
+                      <div className="space-y-3">
+                        <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Category</label>
+                        <select 
+                          value={newFact.category}
+                          onChange={e => setNewFact({...newFact, category: e.target.value as any})}
+                          className="w-full bg-slate-950 border border-slate-800 rounded-xl px-5 py-4 text-xs text-white outline-none focus:border-emerald-500"
+                        >
+                          <option value="CAREER">CAREER</option>
+                          <option value="MILESTONE">MILESTONE</option>
+                          <option value="PERSONAL">PERSONAL</option>
+                          <option value="RELATIONAL">RELATIONAL</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3 text-left">
+                      <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">The Narrative (Description)</label>
+                      <textarea 
+                        placeholder="Provide the high-fidelity details... Expand the story." 
+                        value={newFact.details}
+                        onChange={e => setNewFact({...newFact, details: e.target.value})}
+                        className="w-full min-h-[120px] bg-slate-950 border border-slate-800 rounded-[2rem] px-8 py-8 text-xs font-mono text-slate-500 outline-none resize-none focus:border-emerald-500 transition-all no-scrollbar"
+                      />
+                    </div>
+
+                    <div className="flex gap-4 pt-4">
+                      <button 
+                        onClick={handleAddFact} 
+                        className="flex-grow bg-emerald-600 text-white py-5 rounded-2xl font-bold text-[11px] uppercase tracking-[0.3em] shadow-[0_10px_30px_rgba(16,185,129,0.2)] hover:bg-emerald-500 hover:scale-[1.01] transition-all"
+                      >
+                        Etch to Timeline
+                      </button>
+                      <button 
+                        onClick={() => setIsAddingFact(false)} 
+                        className="px-12 py-5 bg-slate-950 text-slate-600 rounded-2xl text-[10px] font-bold uppercase tracking-widest hover:text-slate-400 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {timelineWithEras.length === 0 ? (
                 <div className="p-20 border border-dashed border-slate-800 rounded-[3rem] text-center opacity-30">
                   <p className="text-xs font-mono uppercase tracking-widest">Chronology awaiting initial calibration.</p>
@@ -252,13 +357,13 @@ const OriginStoryView: React.FC<OriginStoryViewProps> = ({ persona, setPersona, 
                                 <button onClick={() => setEditingFactId(null)} className="w-full py-2 bg-blue-600 text-white rounded-lg text-[8px] font-bold uppercase tracking-widest">Save Changes</button>
                               </div>
                             ) : (
-                              <div className="text-left">
-                                <div className="flex justify-between items-start mb-4 pr-24">
-                                   <h4 className="text-xl font-bold text-white uppercase tracking-tight font-heading">{fact.event}</h4>
-                                   <div className="flex items-center gap-2 pr-4">
+                              <div className="text-left pr-20"> {/* Fixed Padding for Actions & Dots */}
+                                <div className="flex justify-between items-start mb-4">
+                                   <h4 className="text-xl font-bold text-white uppercase tracking-tight font-heading leading-tight">{fact.event}</h4>
+                                   <div className="flex items-center gap-2 shrink-0">
                                       <div className="flex gap-0.5">
                                          {[...Array(10)].map((_, idx) => (
-                                           <div key={idx} className={`w-1 h-2 rounded-[1px] ${idx < fact.impact ? 'bg-emerald-500' : 'bg-slate-800'}`}></div>
+                                           <div key={idx} className={`w-1 h-2 rounded-[1px] ${idx < fact.impact ? 'bg-emerald-500 shadow-[0_0_5px_rgba(16,185,129,0.5)]' : 'bg-slate-800'}`}></div>
                                          ))}
                                       </div>
                                    </div>
@@ -284,7 +389,7 @@ const OriginStoryView: React.FC<OriginStoryViewProps> = ({ persona, setPersona, 
         {/* Sidebar Column (Right) */}
         <div className="lg:col-span-4 space-y-12">
           
-          {/* Inner Circle Section - FIXED: Removed sticky property to prevent overlap */}
+          {/* Inner Circle Section */}
           <div className="p-10 bg-slate-900/50 border border-slate-800 rounded-[3rem] space-y-8 shadow-2xl">
             <div className="flex justify-between items-center">
               <h4 className="text-[11px] font-bold text-white uppercase tracking-[0.3em] font-heading">Inner Circle</h4>
@@ -385,11 +490,10 @@ const OriginStoryView: React.FC<OriginStoryViewProps> = ({ persona, setPersona, 
         </div>
       </div>
 
-      {/* --- KINSHIP MODAL (FIXED: STRICTLY VERTICAL & CONDITIONAL) --- */}
+      {/* --- KINSHIP MODAL --- */}
       {showRelationModal && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-slate-950/90 backdrop-blur-xl animate-in fade-in duration-300">
           <div className="max-w-xl w-full bg-slate-900 border border-slate-800 p-12 rounded-[3.5rem] shadow-[0_0_120px_rgba(16,185,129,0.2)] space-y-10 animate-in zoom-in-95 duration-300 overflow-y-auto max-h-[90vh] no-scrollbar">
-             {/* Modal Header */}
              <div className="flex justify-between items-center border-b border-slate-800 pb-8 text-left">
                 <div>
                   <h3 className="text-3xl font-bold font-heading text-white tracking-tight">Kinship Nexus Calibration</h3>
@@ -400,10 +504,7 @@ const OriginStoryView: React.FC<OriginStoryViewProps> = ({ persona, setPersona, 
                 </button>
              </div>
 
-             {/* Modal Fields - FIXED: Strictly Vertical Stack */}
              <div className="space-y-8 text-left">
-                
-                {/* Connection Archetype Selection */}
                 <div className="space-y-4">
                   <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest block">Relationship Archetype</label>
                   <div className="relative group">
@@ -419,14 +520,12 @@ const OriginStoryView: React.FC<OriginStoryViewProps> = ({ persona, setPersona, 
                       <option value="PARENT">PARENT</option>
                       <option value="OTHER">OTHER</option>
                     </select>
-                    {/* Fixed Arrow Scooch (21px from right) */}
                     <div className="absolute right-[21px] top-1/2 -translate-y-1/2 pointer-events-none text-slate-500 group-hover:text-emerald-500 transition-colors">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m6 9 6 6 6-6"/></svg>
                     </div>
                   </div>
                 </div>
 
-                {/* Identity Input */}
                 <div className="space-y-4">
                   <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest block">Full Identifier (Name)</label>
                   <input 
@@ -438,9 +537,6 @@ const OriginStoryView: React.FC<OriginStoryViewProps> = ({ persona, setPersona, 
                   />
                 </div>
 
-                {/* --- CONDITIONAL FIELDS BASED ON SELECTION --- */}
-                
-                {/* Spouse: Marriage Date Focus */}
                 {editingRelation?.type === 'SPOUSE' && (
                   <div className="space-y-8 animate-in slide-in-from-top-4 duration-500">
                     <div className="space-y-4">
@@ -466,7 +562,6 @@ const OriginStoryView: React.FC<OriginStoryViewProps> = ({ persona, setPersona, 
                   </div>
                 )}
 
-                {/* Descendants: Birth Date Focus */}
                 {(editingRelation?.type === 'CHILD' || editingRelation?.type === 'GRANDCHILD') && (
                   <div className="space-y-8 animate-in slide-in-from-top-4 duration-500">
                     <div className="space-y-4">
@@ -492,7 +587,6 @@ const OriginStoryView: React.FC<OriginStoryViewProps> = ({ persona, setPersona, 
                   </div>
                 )}
 
-                {/* Pet: Adoption Focus */}
                 {editingRelation?.type === 'PET' && (
                   <div className="space-y-8 animate-in slide-in-from-top-4 duration-500">
                     <div className="space-y-4">
@@ -508,7 +602,6 @@ const OriginStoryView: React.FC<OriginStoryViewProps> = ({ persona, setPersona, 
                   </div>
                 )}
 
-                {/* Others: General Date Focus */}
                 {(editingRelation?.type === 'PARENT' || editingRelation?.type === 'OTHER') && (
                   <div className="space-y-4 animate-in slide-in-from-top-4 duration-500">
                     <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest block">Connection / Birth Date</label>
@@ -522,7 +615,6 @@ const OriginStoryView: React.FC<OriginStoryViewProps> = ({ persona, setPersona, 
                   </div>
                 )}
 
-                {/* Memories & Context (Universal) */}
                 <div className="space-y-4 pt-4 border-t border-slate-800">
                   <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest block">Specific Memories & Contextual Bonds</label>
                   <textarea 
@@ -535,7 +627,6 @@ const OriginStoryView: React.FC<OriginStoryViewProps> = ({ persona, setPersona, 
                 </div>
              </div>
 
-             {/* Modal Action Buttons */}
              <div className="flex flex-col gap-4 pt-4">
                <button onClick={handleSaveRelationship} className="w-full bg-emerald-600 text-white py-6 rounded-2xl font-bold text-[11px] uppercase tracking-[0.3em] shadow-[0_10px_40px_rgba(16,185,129,0.3)] hover:bg-emerald-500 hover:translate-y-[-2px] transition-all">
                  Commit Relationship DNA
