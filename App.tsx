@@ -11,7 +11,7 @@ import OriginStoryView from './components/OriginStoryView';
 import DashboardView from './components/DashboardView';
 import DocumentationView from './components/DocumentationView';
 
-const STORAGE_KEY = 'motokage_studio_v2';
+const STORAGE_KEY = 'motokage_studio_v2_live';
 
 const INITIAL_PERSONA: Persona = {
   name: '元影 (Motokage)',
@@ -32,35 +32,66 @@ const INITIAL_PERSONA: Persona = {
     }
   ],
   originFacts: [
-    { id: 'o1', year: '2020', event: 'Founded Motokage Studio', significance: 'Established the identity framework.' }
+    { 
+      id: 'o1', 
+      date: 'January 1, 2020', 
+      event: 'Founded Motokage Studio', 
+      significance: 'Established the identity framework for high-fidelity digital twins.', 
+      category: 'CAREER',
+      impact: 9,
+      details: 'Started as a conceptual lab for exploring how human judgment scales in serverless environments.'
+    }
   ],
+  relationships: [],
+  interests: {
+    hobbies: ['AI Architecture', 'Sailing', 'Analog Photography'],
+    music: ['Massive Attack', 'Brian Eno', 'Max Richter'],
+    other: []
+  },
   accessLevel: 'AMBASSADOR'
 };
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>(TabType.STRATEGY);
   const [accessLevel, setAccessLevel] = useState<AccessLevel>('AMBASSADOR');
-  // Default to false and verify via aistudio.hasSelectedApiKey()
   const [hasKey, setHasKey] = useState<boolean>(false);
+  
   const [persona, setPersona] = useState<Persona>(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
-    return saved ? JSON.parse(saved) : INITIAL_PERSONA;
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        
+        // --- DNA MIGRATION LAYER ---
+        // We check for new fields and merge them without overwriting user data.
+        const migrated = { ...INITIAL_PERSONA, ...parsed };
+        
+        // Deep merge specific objects to prevent losing nested arrays
+        migrated.interests = { ...INITIAL_PERSONA.interests, ...(parsed.interests || {}) };
+        migrated.originFacts = parsed.originFacts || INITIAL_PERSONA.originFacts;
+        migrated.relationships = parsed.relationships || [];
+        migrated.mandates = parsed.mandates || INITIAL_PERSONA.mandates;
+        
+        return migrated;
+      } catch (e) {
+        console.warn("DNA Corruption detected, reverting to template safely.");
+        return INITIAL_PERSONA;
+      }
+    }
+    return INITIAL_PERSONA;
   });
 
   const [messages, setMessages] = useState<Message[]>([]);
 
   useEffect(() => {
-    // GUIDELINE: Use window.aistudio.hasSelectedApiKey() to check key status
     const checkKeyStatus = async () => {
       if (window.aistudio && typeof window.aistudio.hasSelectedApiKey === 'function') {
         const selected = await window.aistudio.hasSelectedApiKey();
         setHasKey(selected);
       } else {
-        // Fallback for non-AI Studio environments where process.env.API_KEY is handled externally
         setHasKey(true);
       }
     };
-    
     checkKeyStatus();
   }, [accessLevel]);
 
@@ -68,7 +99,6 @@ const App: React.FC = () => {
     try {
       if (window.aistudio && typeof window.aistudio.openSelectKey === 'function') {
         await window.aistudio.openSelectKey();
-        // GUIDELINE: MUST assume the key selection was successful after triggering openSelectKey() and proceed to the app
         setHasKey(true);
       }
     } catch (err) {
@@ -80,6 +110,7 @@ const App: React.FC = () => {
     handleOpenKeyPicker();
   };
 
+  // Persist Live DNA only when it changes
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(persona));
   }, [persona]);
@@ -126,7 +157,7 @@ const App: React.FC = () => {
       </main>
 
       <footer className="py-12 border-t border-slate-900 text-center text-slate-600 text-[9px] font-mono uppercase tracking-[0.3em]">
-        © 2026 Motokage • Enterprise Architecture Stack v15.9.2-GOLD • {accessLevel} MODE
+        © 2026 Motokage • Live Identity v15.9.2-GOLD • {accessLevel} MODE
       </footer>
     </div>
   );

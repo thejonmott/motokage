@@ -37,10 +37,27 @@
   "originFacts": [
     {
       "id": "o1",
-      "year": "2020",
+      "date": "January 1, 2020",
       "event": "Founded Motokage Studio",
-      "significance": "Established the identity framework."
+      "significance": "Established the identity framework for high-fidelity digital twins.",
+      "category": "CAREER",
+      "impact": 9,
+      "details": "Started as a conceptual lab for exploring how human judgment scales in serverless environments."
     }
   ],
+  "relationships": [],
+  "interests": {
+    "hobbies": [
+      "AI Architecture",
+      "Sailing",
+      "Analog Photography"
+    ],
+    "music": [
+      "Massive Attack",
+      "Brian Eno",
+      "Max Richter"
+    ],
+    "other": []
+  },
   "accessLevel": "AMBASSADOR"
 }
