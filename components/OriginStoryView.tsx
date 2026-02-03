@@ -1,7 +1,7 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { Persona, OriginFact, OriginCategory, Relationship, AccessLevel } from '../types';
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
 
 interface OriginStoryViewProps {
   persona: Persona;
@@ -19,6 +19,16 @@ const OriginStoryView: React.FC<OriginStoryViewProps> = ({ persona, setPersona, 
   const [showRelationModal, setShowRelationModal] = useState(false);
   const [editingRelation, setEditingRelation] = useState<Partial<Relationship> | null>(null);
 
+  // Interest Editing State
+  const [editingInterestCategory, setEditingInterestCategory] = useState<keyof Persona['interests'] | null>(null);
+  const [newInterestValue, setNewInterestValue] = useState('');
+
+  // Narrative Architect States (Option 3 Addition)
+  const [isRecordingNarrative, setIsRecordingNarrative] = useState(false);
+  const [isExtracting, setIsExtracting] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+
   const [newFact, setNewFact] = useState<Partial<OriginFact>>({
     date: '',
     event: '',
@@ -29,6 +39,58 @@ const OriginStoryView: React.FC<OriginStoryViewProps> = ({ persona, setPersona, 
   });
 
   const isLocked = accessLevel !== 'CORE';
+
+  // --- NARRATIVE ARCHITECT LOGIC ---
+  const startNarrativeRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+      mediaRecorder.ondataavailable = (e) => audioChunksRef.current.push(e.data);
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const reader = new FileReader();
+        reader.readAsDataURL(audioBlob);
+        reader.onloadend = async () => {
+          const base64Audio = (reader.result as string).split(',')[1];
+          processSpokenNarrative(base64Audio);
+        };
+      };
+      mediaRecorder.start();
+      setIsRecordingNarrative(true);
+    } catch (err) {
+      console.error("Mic access denied:", err);
+    }
+  };
+
+  const stopNarrativeRecording = () => {
+    if (mediaRecorderRef.current) mediaRecorderRef.current.stop();
+    setIsRecordingNarrative(false);
+  };
+
+  const processSpokenNarrative = async (base64Audio: string) => {
+    setIsExtracting(true);
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    try {
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash-native-audio-preview-12-2025',
+        contents: {
+          parts: [
+            { inlineData: { data: base64Audio, mimeType: 'audio/webm' } },
+            { text: "Extract memory details from this spoken story. Return ONLY a JSON object with: event, date, details, significance, impact (1-10)." }
+          ]
+        },
+        config: { responseMimeType: "application/json" }
+      });
+      const data = JSON.parse(response.text || '{}');
+      setNewFact(prev => ({ ...prev, ...data }));
+    } catch (e) { 
+      console.error("Extraction fail:", e); 
+    } finally {
+      setIsExtracting(false);
+    }
+  };
 
   // --- FACT MANAGEMENT ---
   const handleAddFact = () => {
@@ -64,14 +126,50 @@ const OriginStoryView: React.FC<OriginStoryViewProps> = ({ persona, setPersona, 
     }));
   };
 
-  // --- RELATIONSHIP MANAGEMENT & AUTO-TIMELINE SYNC ---
+  // --- INTEREST MANAGEMENT ---
+  const addInterest = (category: keyof Persona['interests']) => {
+    if (!newInterestValue.trim()) return;
+    setPersona(prev => ({
+      ...prev,
+      interests: {
+        ...prev.interests,
+        [category]: [...prev.interests[category], newInterestValue.trim()]
+      }
+    }));
+    setNewInterestValue('');
+  };
+
+  const removeInterest = (category: keyof Persona['interests'], index: number) => {
+    setPersona(prev => ({
+      ...prev,
+      interests: {
+        ...prev.interests,
+        [category]: prev.interests[category].filter((_, i) => i !== index)
+      }
+    }));
+  };
+
+  const updateInterestValue = (category: keyof Persona['interests'], index: number, value: string) => {
+    setPersona(prev => {
+      const updatedList = [...prev.interests[category]];
+      updatedList[index] = value;
+      return {
+        ...prev,
+        interests: {
+          ...prev.interests,
+          [category]: updatedList
+        }
+      };
+    });
+  };
+
+  // --- RELATIONSHIP MANAGEMENT ---
   const handleSaveRelationship = () => {
     if (!editingRelation?.name) return;
     
     const relId = editingRelation.id || `rel_${Date.now()}`;
     const syncFactId = `sync_${relId}`;
     
-    // Logic for Automatic Timeline Sync
     const date = editingRelation.marriageDate || editingRelation.birthDate || '';
     let syncFact: OriginFact | null = null;
 
@@ -101,12 +199,10 @@ const OriginStoryView: React.FC<OriginStoryViewProps> = ({ persona, setPersona, 
     }
 
     setPersona(prev => {
-      // Update the relationships array
       const updatedRelationships = prev.relationships.some(r => r.id === relId)
         ? prev.relationships.map(r => r.id === relId ? (editingRelation as Relationship) : r)
         : [...prev.relationships, { ...editingRelation, id: relId } as Relationship];
 
-      // Update the originFacts array (Timeline)
       let updatedFacts = prev.originFacts.filter(f => f.id !== syncFactId);
       if (syncFact) {
         updatedFacts = [...updatedFacts, syncFact].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
@@ -127,15 +223,6 @@ const OriginStoryView: React.FC<OriginStoryViewProps> = ({ persona, setPersona, 
     }));
   };
 
-  const updateInterests = (key: keyof Persona['interests'], val: string) => {
-    const arr = val.split(',').map(s => s.trim()).filter(s => s !== '');
-    setPersona(prev => ({
-      ...prev,
-      interests: { ...prev.interests, [key]: arr }
-    }));
-  };
-
-  // Era Grouping for the Timeline
   const timelineWithEras = useMemo(() => {
     const groups: { era: string, facts: OriginFact[] }[] = [];
     persona.originFacts.forEach(fact => {
@@ -151,15 +238,15 @@ const OriginStoryView: React.FC<OriginStoryViewProps> = ({ persona, setPersona, 
   return (
     <div className="space-y-16 animate-in fade-in duration-1000 pb-32 relative">
       {/* Header Section */}
-      <section className="flex flex-col md:flex-row justify-between items-start md:items-end gap-8 border-b border-slate-900 pb-12">
-        <div className="space-y-4 text-left">
+      <section className="flex flex-col md:flex-row justify-between items-start md:items-end gap-8 border-b border-slate-900 pb-12 text-left">
+        <div className="space-y-4">
           <div className="inline-flex items-center gap-3 px-4 py-1.5 bg-emerald-500/10 text-emerald-400 text-[10px] font-bold rounded-full border border-emerald-500/20 uppercase tracking-[0.4em]">
             Memory Core & Life Chronology
           </div>
           <h2 className="text-7xl font-bold font-heading text-white tracking-tighter">
             The <span className="text-slate-500 italic font-light">Life Ledger</span>
           </h2>
-          <p className="text-slate-500 text-sm font-mono uppercase tracking-widest max-w-xl">
+          <p className="text-slate-500 text-sm font-mono uppercase tracking-widest max-w-xl text-left">
             A chronological mapping of identity milestones and synchronized relational anchors.
           </p>
         </div>
@@ -188,23 +275,31 @@ const OriginStoryView: React.FC<OriginStoryViewProps> = ({ persona, setPersona, 
         {/* Timeline Column (Left) */}
         <div className="lg:col-span-8 space-y-16">
           <div className="relative">
-            {/* The "Golden Thread" vertical line */}
             <div className="absolute left-[7.5rem] top-0 bottom-0 w-[2px] bg-gradient-to-b from-emerald-500/50 via-slate-800 to-transparent hidden md:block"></div>
             
             <div className="space-y-20">
               
-              {/* --- ENHANCED APPEND MEMORY FORM --- */}
+              {/* --- APPEND MEMORY FORM --- */}
               {isAddingFact && (
-                <div className="ml-[6rem] animate-in slide-in-from-top-4 duration-500 mb-20">
+                <div className="ml-[6rem] animate-in slide-in-from-top-4 duration-500 mb-20 text-left">
                   <div className="p-10 bg-slate-900 border border-emerald-500/30 rounded-[3rem] shadow-[0_0_50px_rgba(16,185,129,0.1)] space-y-8 relative overflow-hidden group">
                     <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 via-blue-500 to-emerald-500 opacity-50"></div>
                     
                     <div className="flex justify-between items-start mb-2">
                        <h3 className="text-xl font-bold text-white uppercase tracking-tight font-heading">New Chronological Node</h3>
-                       <div className="text-[9px] font-mono text-emerald-400 uppercase tracking-widest">Awaiting Calibration</div>
+                       <div className="flex items-center gap-4">
+                         {isExtracting && <span className="text-[8px] font-mono text-emerald-400 animate-pulse uppercase tracking-widest">Architecting...</span>}
+                         <button 
+                          onClick={isRecordingNarrative ? stopNarrativeRecording : startNarrativeRecording}
+                          className={`p-4 rounded-full transition-all border ${isRecordingNarrative ? 'bg-red-500 border-red-400 animate-pulse text-white' : 'bg-slate-950 border-slate-800 text-slate-500 hover:text-emerald-400'}`}
+                          title="Voice Architecture"
+                         >
+                           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
+                         </button>
+                       </div>
                     </div>
 
-                    <div className="grid md:grid-cols-2 gap-8 text-left">
+                    <div className="grid md:grid-cols-2 gap-8">
                       <div className="space-y-3">
                         <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Full Date</label>
                         <input 
@@ -227,7 +322,7 @@ const OriginStoryView: React.FC<OriginStoryViewProps> = ({ persona, setPersona, 
                       </div>
                     </div>
 
-                    <div className="space-y-4 text-left">
+                    <div className="space-y-4">
                       <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Weight Score (Impact 1-10)</label>
                       <div className="flex items-center gap-4">
                         <div className="flex-grow flex gap-1 h-8 items-end">
@@ -243,7 +338,7 @@ const OriginStoryView: React.FC<OriginStoryViewProps> = ({ persona, setPersona, 
                       </div>
                     </div>
 
-                    <div className="grid md:grid-cols-2 gap-8 text-left">
+                    <div className="grid md:grid-cols-2 gap-8">
                       <div className="space-y-3">
                         <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Significance Anchor</label>
                         <input 
@@ -269,7 +364,7 @@ const OriginStoryView: React.FC<OriginStoryViewProps> = ({ persona, setPersona, 
                       </div>
                     </div>
 
-                    <div className="space-y-3 text-left">
+                    <div className="space-y-3">
                       <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">The Narrative (Description)</label>
                       <textarea 
                         placeholder="Provide the high-fidelity details... Expand the story." 
@@ -303,8 +398,7 @@ const OriginStoryView: React.FC<OriginStoryViewProps> = ({ persona, setPersona, 
                 </div>
               ) : (
                 timelineWithEras.map((group) => (
-                  <div key={group.era} className="space-y-12">
-                    {/* Year Era Marker */}
+                  <div key={group.era} className="space-y-12 text-left">
                     <div className="flex items-center gap-6 ml-[6rem] animate-in fade-in duration-700">
                        <div className="px-5 py-2 bg-slate-900 border border-slate-800 rounded-full text-[10px] font-bold text-slate-400 uppercase tracking-[0.4em] shadow-lg">
                           Era: {group.era}
@@ -315,7 +409,6 @@ const OriginStoryView: React.FC<OriginStoryViewProps> = ({ persona, setPersona, 
                     <div className="space-y-12">
                       {group.facts.map((fact) => (
                         <div key={fact.id} className="flex gap-8 group animate-in slide-in-from-left-4">
-                          {/* Date Pillar */}
                           <div className="w-24 shrink-0 text-right space-y-1 pt-2">
                             <div className="text-sm font-bold text-white font-mono leading-tight">{fact.date}</div>
                             <div className={`text-[7px] font-bold uppercase tracking-[0.2em] ${
@@ -326,7 +419,6 @@ const OriginStoryView: React.FC<OriginStoryViewProps> = ({ persona, setPersona, 
                             </div>
                           </div>
                           
-                          {/* Life Node (The Circle) */}
                           <div className="hidden md:flex flex-col items-center shrink-0 w-8">
                             <div className={`w-4 h-4 rounded-full bg-slate-950 border-[3px] transition-all group-hover:scale-125 z-10 mt-3 ${
                               fact.category === 'CAREER' ? 'border-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.3)]' : 
@@ -335,7 +427,6 @@ const OriginStoryView: React.FC<OriginStoryViewProps> = ({ persona, setPersona, 
                             }`}></div>
                           </div>
 
-                          {/* Event Card */}
                           <div className={`flex-grow bg-slate-900/30 border p-8 rounded-[2.5rem] transition-all relative group/card ${
                             fact.category === 'RELATIONAL' ? 'border-emerald-500/10 hover:border-emerald-500/30 shadow-[0_0_20px_rgba(16,185,129,0.05)]' : 'border-slate-900 hover:border-slate-800'
                           }`}>
@@ -357,7 +448,7 @@ const OriginStoryView: React.FC<OriginStoryViewProps> = ({ persona, setPersona, 
                                 <button onClick={() => setEditingFactId(null)} className="w-full py-2 bg-blue-600 text-white rounded-lg text-[8px] font-bold uppercase tracking-widest">Save Changes</button>
                               </div>
                             ) : (
-                              <div className="text-left pr-20"> {/* Fixed Padding for Actions & Dots */}
+                              <div className="text-left pr-20">
                                 <div className="flex justify-between items-start mb-4">
                                    <h4 className="text-xl font-bold text-white uppercase tracking-tight font-heading leading-tight">{fact.event}</h4>
                                    <div className="flex items-center gap-2 shrink-0">
@@ -387,7 +478,7 @@ const OriginStoryView: React.FC<OriginStoryViewProps> = ({ persona, setPersona, 
         </div>
 
         {/* Sidebar Column (Right) */}
-        <div className="lg:col-span-4 space-y-12">
+        <div className="lg:col-span-4 space-y-12 text-left">
           
           {/* Inner Circle Section */}
           <div className="p-10 bg-slate-900/50 border border-slate-800 rounded-[3rem] space-y-8 shadow-2xl">
@@ -422,68 +513,124 @@ const OriginStoryView: React.FC<OriginStoryViewProps> = ({ persona, setPersona, 
             </div>
           </div>
 
-          {/* Favorites & Interests Section */}
+          {/* Favorites & Interests Section (Additive Edit Mode) */}
           <div className="p-10 bg-slate-900/50 border border-slate-800 rounded-[3rem] space-y-8 shadow-2xl relative">
-            <h4 className="text-[11px] font-bold text-white uppercase tracking-[0.3em] font-heading text-left">Favorites & Interests</h4>
+            <h4 className="text-[11px] font-bold text-white uppercase tracking-[0.3em] font-heading text-left tracking-widest">Favorites & Interests</h4>
             <div className="space-y-8 text-left">
-               {/* Hobbies */}
-               <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-slate-600"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.5 1.5"/><path d="M7 11c.97 0 1.75-.78 1.75-1.75S7.97 7.5 7 7.5 5.25 8.28 5.25 9.25 6.03 11 7 11z"/></svg>
-                    <div className="text-[8px] font-bold text-slate-600 uppercase tracking-widest">Hobbies</div>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {persona.interests.hobbies.map((item, i) => (
-                      <span key={i} className="px-3 py-1 bg-slate-950 border border-slate-800 text-slate-400 text-[8px] font-mono rounded-lg">{item}</span>
-                    ))}
-                  </div>
-               </div>
-
-               {/* Authors */}
-               <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-slate-600"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-                    <div className="text-[8px] font-bold text-slate-600 uppercase tracking-widest">Authors & Books</div>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {persona.interests.authors.map((item, i) => (
-                      <span key={i} className="px-3 py-1 bg-slate-950 border border-slate-800 text-emerald-400/70 text-[8px] font-mono rounded-lg">{item}</span>
-                    ))}
-                  </div>
-               </div>
-
-               {/* Movies */}
-               <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-slate-600"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/><line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="17" x2="22" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/></svg>
-                    <div className="text-[8px] font-bold text-slate-600 uppercase tracking-widest">Movies</div>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {persona.interests.movies.map((item, i) => (
-                      <span key={i} className="px-3 py-1 bg-slate-950 border border-slate-800 text-blue-400/70 text-[8px] font-mono rounded-lg">{item}</span>
-                    ))}
-                  </div>
-               </div>
-
-               {/* Foods */}
-               <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-slate-600"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
-                    <div className="text-[8px] font-bold text-slate-600 uppercase tracking-widest">Foods</div>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {persona.interests.foods.map((item, i) => (
-                      <span key={i} className="px-3 py-1 bg-slate-950 border border-slate-800 text-amber-400/70 text-[8px] font-mono rounded-lg">{item}</span>
-                    ))}
-                  </div>
-               </div>
+               
+               {/* Interests Rendering Helper */}
+               {(['hobbies', 'authors', 'movies', 'foods'] as const).map((cat) => (
+                 <div key={cat} className="space-y-3">
+                    <div className="flex items-center justify-between group/title">
+                      <div className="flex items-center gap-2">
+                        {cat === 'hobbies' && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-slate-600"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/></svg>}
+                        {cat === 'authors' && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-slate-600"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>}
+                        {cat === 'movies' && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-slate-600"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/></svg>}
+                        {cat === 'foods' && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-slate-600"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/></svg>}
+                        <div className="text-[8px] font-bold text-slate-600 uppercase tracking-widest">{cat === 'authors' ? 'Authors & Books' : cat}</div>
+                      </div>
+                      {!isLocked && (
+                        <button 
+                          onClick={() => setEditingInterestCategory(editingInterestCategory === cat ? null : cat)}
+                          className="opacity-0 group-hover/title:opacity-100 transition-opacity text-[8px] font-bold text-indigo-400 uppercase tracking-tighter"
+                        >
+                          {editingInterestCategory === cat ? 'Done' : 'Edit'}
+                        </button>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {persona.interests[cat].map((item, i) => (
+                        <div key={i} className="group/item relative">
+                          {editingInterestCategory === cat ? (
+                            <input 
+                              type="text" 
+                              value={item}
+                              onChange={(e) => updateInterestValue(cat, i, e.target.value)}
+                              className={`px-3 py-1 bg-slate-950 border border-slate-700 text-[8px] font-mono rounded-lg outline-none focus:border-indigo-500 min-w-[50px] ${
+                                cat === 'hobbies' ? 'text-slate-400' : cat === 'authors' ? 'text-emerald-400/70' : cat === 'movies' ? 'text-blue-400/70' : 'text-amber-400/70'
+                              }`}
+                            />
+                          ) : (
+                            <span className={`px-3 py-1 bg-slate-950 border border-slate-800 text-[8px] font-mono rounded-lg ${
+                              cat === 'hobbies' ? 'text-slate-400' : cat === 'authors' ? 'text-emerald-400/70' : cat === 'movies' ? 'text-blue-400/70' : 'text-amber-400/70'
+                            }`}>{item}</span>
+                          )}
+                          {editingInterestCategory === cat && (
+                            <button 
+                              onClick={() => removeInterest(cat, i)}
+                              className="absolute -top-1 -right-1 bg-rose-500 text-white rounded-full w-3 h-3 flex items-center justify-center text-[6px] shadow-lg"
+                            >✕</button>
+                          )}
+                        </div>
+                      ))}
+                      {editingInterestCategory === cat && (
+                        <div className="flex gap-1 animate-in zoom-in-95">
+                          <input 
+                            type="text" 
+                            placeholder="Add..." 
+                            value={newInterestValue}
+                            onChange={(e) => setNewInterestValue(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && addInterest(cat)}
+                            className="px-3 py-1 bg-slate-900 border border-indigo-500/30 text-white text-[8px] font-mono rounded-lg outline-none placeholder:text-slate-700"
+                          />
+                          <button 
+                            onClick={() => addInterest(cat)}
+                            className="px-2 py-1 bg-indigo-600 text-white text-[8px] font-mono rounded-lg"
+                          >+</button>
+                        </div>
+                      )}
+                    </div>
+                 </div>
+               ))}
 
                {/* Core Philosophy Card */}
-               <div className="pt-6 border-t border-slate-800">
-                  <div className="text-[8px] font-bold text-emerald-400 uppercase tracking-widest mb-4">Core Philosophy</div>
+               <div className="pt-6 border-t border-slate-800 group/phi">
+                  <div className="flex justify-between items-center mb-4">
+                    <div className="text-[8px] font-bold text-emerald-400 uppercase tracking-widest">Core Philosophy</div>
+                    {!isLocked && (
+                      <button 
+                        onClick={() => setEditingInterestCategory(editingInterestCategory === 'philosophy' ? null : 'philosophy')}
+                        className="opacity-0 group-hover/phi:opacity-100 transition-opacity text-[8px] font-bold text-emerald-500 uppercase tracking-tighter"
+                      >
+                        {editingInterestCategory === 'philosophy' ? 'Done' : 'Edit'}
+                      </button>
+                    )}
+                  </div>
                   {persona.interests.philosophy.map((p, i) => (
-                    <div key={i} className="text-[10px] text-slate-500 font-mono italic leading-relaxed mb-4 border-l-2 border-emerald-500/30 pl-4 py-1">"{p}"</div>
+                    <div key={i} className="relative group/phiitem mb-4">
+                      {editingInterestCategory === 'philosophy' ? (
+                        <div className="flex gap-2 items-start">
+                          <textarea 
+                            value={p}
+                            onChange={(e) => updateInterestValue('philosophy', i, e.target.value)}
+                            className="flex-grow bg-slate-950 border border-slate-700 text-[10px] text-slate-400 font-mono italic leading-relaxed p-4 rounded-xl outline-none focus:border-emerald-500 min-h-[80px]"
+                          />
+                          <button 
+                            onClick={() => removeInterest('philosophy', i)}
+                            className="bg-rose-500/20 text-rose-500 p-2 rounded-lg hover:bg-rose-500 hover:text-white transition-all"
+                          >
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="text-[10px] text-slate-500 font-mono italic leading-relaxed border-l-2 border-emerald-500/30 pl-4 py-1">"{p}"</div>
+                      )}
+                    </div>
                   ))}
+                  {editingInterestCategory === 'philosophy' && (
+                    <div className="flex gap-2 items-end pt-2">
+                       <textarea 
+                          placeholder="New axiom..." 
+                          value={newInterestValue}
+                          onChange={(e) => setNewInterestValue(e.target.value)}
+                          className="flex-grow bg-slate-900 border border-emerald-500/30 text-white text-[10px] font-mono rounded-xl p-4 outline-none placeholder:text-slate-700"
+                       />
+                       <button 
+                          onClick={() => addInterest('philosophy')}
+                          className="bg-emerald-600 text-white px-4 py-4 rounded-xl text-[10px] font-bold"
+                       >+</button>
+                    </div>
+                  )}
                </div>
             </div>
           </div>
@@ -520,9 +667,6 @@ const OriginStoryView: React.FC<OriginStoryViewProps> = ({ persona, setPersona, 
                       <option value="PARENT">PARENT</option>
                       <option value="OTHER">OTHER</option>
                     </select>
-                    <div className="absolute right-[21px] top-1/2 -translate-y-1/2 pointer-events-none text-slate-500 group-hover:text-emerald-500 transition-colors">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m6 9 6 6 6-6"/></svg>
-                    </div>
                   </div>
                 </div>
 
@@ -533,90 +677,12 @@ const OriginStoryView: React.FC<OriginStoryViewProps> = ({ persona, setPersona, 
                     placeholder="e.g. Jane Mott" 
                     value={editingRelation?.name || ''}
                     onChange={e => setEditingRelation({...editingRelation, name: e.target.value})}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-6 py-5 text-xs text-white outline-none focus:border-emerald-500 transition-all shadow-inner" 
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-6 py-5 text-xs text-white outline-none focus:border-emerald-500 transition-all" 
                   />
                 </div>
 
-                {editingRelation?.type === 'SPOUSE' && (
-                  <div className="space-y-8 animate-in slide-in-from-top-4 duration-500">
-                    <div className="space-y-4">
-                      <label className="text-[9px] font-bold text-emerald-500 uppercase tracking-widest block">Covenant Date (Marriage)</label>
-                      <input 
-                        type="text" 
-                        placeholder="e.g. June 15, 2012" 
-                        value={editingRelation?.marriageDate || ''}
-                        onChange={e => setEditingRelation({...editingRelation, marriageDate: e.target.value})}
-                        className="w-full bg-slate-950 border border-emerald-500/20 rounded-xl px-6 py-5 text-xs text-white outline-none focus:border-emerald-500" 
-                      />
-                    </div>
-                    <div className="space-y-4">
-                      <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest block">Union Location (Place)</label>
-                      <input 
-                        type="text" 
-                        placeholder="City, State, Country" 
-                        value={editingRelation?.place || ''}
-                        onChange={e => setEditingRelation({...editingRelation, place: e.target.value})}
-                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-6 py-5 text-xs text-white outline-none focus:border-emerald-500" 
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {(editingRelation?.type === 'CHILD' || editingRelation?.type === 'GRANDCHILD') && (
-                  <div className="space-y-8 animate-in slide-in-from-top-4 duration-500">
-                    <div className="space-y-4">
-                      <label className="text-[9px] font-bold text-emerald-500 uppercase tracking-widest block">Emergence Date (Birth)</label>
-                      <input 
-                        type="text" 
-                        placeholder="MM/DD/YYYY" 
-                        value={editingRelation?.birthDate || ''}
-                        onChange={e => setEditingRelation({...editingRelation, birthDate: e.target.value})}
-                        className="w-full bg-slate-950 border border-emerald-500/20 rounded-xl px-6 py-5 text-xs text-white outline-none focus:border-emerald-500" 
-                      />
-                    </div>
-                    <div className="space-y-4">
-                      <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest block">Birth Location</label>
-                      <input 
-                        type="text" 
-                        placeholder="City, State" 
-                        value={editingRelation?.place || ''}
-                        onChange={e => setEditingRelation({...editingRelation, place: e.target.value})}
-                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-6 py-5 text-xs text-white outline-none focus:border-emerald-500" 
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {editingRelation?.type === 'PET' && (
-                  <div className="space-y-8 animate-in slide-in-from-top-4 duration-500">
-                    <div className="space-y-4">
-                      <label className="text-[9px] font-bold text-emerald-500 uppercase tracking-widest block">Arrival Date (Adoption)</label>
-                      <input 
-                        type="text" 
-                        placeholder="MM/DD/YYYY" 
-                        value={editingRelation?.birthDate || ''}
-                        onChange={e => setEditingRelation({...editingRelation, birthDate: e.target.value})}
-                        className="w-full bg-slate-950 border border-emerald-500/20 rounded-xl px-6 py-5 text-xs text-white outline-none focus:border-emerald-500" 
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {(editingRelation?.type === 'PARENT' || editingRelation?.type === 'OTHER') && (
-                  <div className="space-y-4 animate-in slide-in-from-top-4 duration-500">
-                    <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest block">Connection / Birth Date</label>
-                    <input 
-                      type="text" 
-                      placeholder="MM/DD/YYYY" 
-                      value={editingRelation?.birthDate || ''}
-                      onChange={e => setEditingRelation({...editingRelation, birthDate: e.target.value})}
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-6 py-5 text-xs text-white outline-none focus:border-emerald-500" 
-                    />
-                  </div>
-                )}
-
                 <div className="space-y-4 pt-4 border-t border-slate-800">
-                  <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest block">Specific Memories & Contextual Bonds</label>
+                  <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest block">Memories & Bonds</label>
                   <textarea 
                     placeholder="Share core stories that define this relational branch..." 
                     value={editingRelation?.memories || ''}

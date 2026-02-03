@@ -22,6 +22,7 @@ export interface MemoryShard {
   content: string;
   active: boolean;
   sensitivity: SensitivityLevel;
+  audioData?: string; // Base64 raw audio
 }
 
 export interface Agent {
@@ -44,12 +45,12 @@ export interface Mandate {
 
 export interface OriginFact {
   id: string;
-  date: string; // Full date string (e.g., "June 15, 2020")
+  date: string; 
   event: string;
   significance: string;
   details?: string;
   category: OriginCategory;
-  impact: number; // 1-10 priority
+  impact: number;
 }
 
 export interface Relationship {
@@ -83,6 +84,7 @@ export interface Persona {
     philosophy: string[];
     other: string[];
   };
+  vocalSignature?: string[]; // Array of base64 audio samples
   accessLevel: AccessLevel;
 }
 
