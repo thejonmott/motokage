@@ -77,6 +77,10 @@ export interface Persona {
   interests: {
     hobbies: string[];
     music: string[];
+    authors: string[];
+    movies: string[];
+    foods: string[];
+    philosophy: string[];
     other: string[];
   };
   accessLevel: AccessLevel;

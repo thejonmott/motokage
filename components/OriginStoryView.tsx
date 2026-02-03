@@ -120,13 +120,11 @@ const OriginStoryView: React.FC<OriginStoryViewProps> = ({ persona, setPersona, 
     if (!editingRelation?.name) return;
     
     if (editingRelation.id) {
-      // Update existing
       setPersona(prev => ({
         ...prev,
         relationships: prev.relationships.map(r => r.id === editingRelation.id ? (editingRelation as Relationship) : r)
       }));
     } else {
-      // Add new
       const rel: Relationship = {
         ...editingRelation,
         id: `rel_${Date.now()}`,
@@ -142,7 +140,7 @@ const OriginStoryView: React.FC<OriginStoryViewProps> = ({ persona, setPersona, 
     setPersona(prev => ({ ...prev, relationships: prev.relationships.filter(r => r.id !== id) }));
   };
 
-  const updateInterests = (key: 'hobbies' | 'music', val: string) => {
+  const updateInterests = (key: keyof Persona['interests'], val: string) => {
     const arr = val.split(',').map(s => s.trim()).filter(s => s !== '');
     setPersona(prev => ({
       ...prev,
@@ -184,38 +182,12 @@ const OriginStoryView: React.FC<OriginStoryViewProps> = ({ persona, setPersona, 
         )}
       </section>
 
-      {/* Resume Ingestion Area */}
-      {isIngestingResume && (
-        <div className="bg-slate-900 border border-blue-500/30 p-10 rounded-[2.5rem] shadow-2xl animate-in slide-in-from-top-4 space-y-6">
-          <div className="flex justify-between items-center">
-            <h4 className="text-[10px] font-bold text-white uppercase tracking-widest">Neural Timeline Ingestion</h4>
-            <span className="text-[8px] font-mono text-slate-500">PASTE RESUME OR JOB HISTORY BELOW</span>
-          </div>
-          <textarea 
-            value={resumeText}
-            onChange={(e) => setResumeText(e.target.value)}
-            placeholder="Mottio Studio (2020-2024)..."
-            className="w-full h-48 bg-slate-950 border border-slate-800 rounded-2xl p-6 text-xs font-mono text-blue-300 outline-none resize-none focus:border-blue-500/50"
-          />
-          <div className="flex gap-4">
-            <button 
-              onClick={handleIngestResume}
-              disabled={isProcessing}
-              className="flex-grow bg-blue-600 text-white py-4 rounded-xl text-[10px] font-bold uppercase tracking-widest disabled:opacity-50"
-            >
-              {isProcessing ? 'Synthesizing Career Chronology...' : 'Extract Career Milestones'}
-            </button>
-            <button onClick={() => setIsIngestingResume(false)} className="px-10 py-4 bg-slate-950 text-slate-500 rounded-xl text-[10px] font-bold uppercase tracking-widest">Cancel</button>
-          </div>
-        </div>
-      )}
-
       {/* Manual Fact Entry Form */}
       {isAddingFact && (
         <div className="bg-slate-900 border border-slate-800 p-10 rounded-[2.5rem] shadow-2xl space-y-8 animate-in slide-in-from-top-4">
           <div className="grid md:grid-cols-3 gap-8">
             <div className="space-y-4">
-              <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Full Date (M/D/Y)</label>
+              <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest text-left block">Full Date (M/D/Y)</label>
               <input 
                 type="text" 
                 placeholder="e.g. June 15, 2012" 
@@ -224,8 +196,8 @@ const OriginStoryView: React.FC<OriginStoryViewProps> = ({ persona, setPersona, 
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl px-5 py-4 text-xs text-white outline-none focus:border-blue-500" 
               />
             </div>
-            <div className="space-y-4">
-              <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Event Headline</label>
+            <div className="space-y-4 text-left">
+              <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest block">Event Headline</label>
               <input 
                 type="text" 
                 placeholder="Started Vision Lab" 
@@ -234,8 +206,8 @@ const OriginStoryView: React.FC<OriginStoryViewProps> = ({ persona, setPersona, 
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl px-5 py-4 text-xs text-white outline-none focus:border-blue-500" 
               />
             </div>
-            <div className="space-y-4">
-              <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Category</label>
+            <div className="space-y-4 text-left">
+              <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest block">Category</label>
               <select 
                 value={newFact.category}
                 onChange={e => setNewFact({...newFact, category: e.target.value as any})}
@@ -248,8 +220,8 @@ const OriginStoryView: React.FC<OriginStoryViewProps> = ({ persona, setPersona, 
               </select>
             </div>
           </div>
-          <div className="space-y-4">
-            <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">The Story (Full Details)</label>
+          <div className="space-y-4 text-left">
+            <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest block">The Story (Full Details)</label>
             <textarea 
               placeholder="Expand on this memory... provide the high-fidelity context." 
               value={newFact.details}
@@ -268,24 +240,26 @@ const OriginStoryView: React.FC<OriginStoryViewProps> = ({ persona, setPersona, 
         </div>
       )}
 
-      {/* --- TIMELINE & SOUL MAP LAYOUT --- */}
-      <div className="grid lg:grid-cols-12 gap-16">
+      {/* --- TIMELINE --- */}
+      <div className="grid lg:grid-cols-12 gap-16 relative">
         
         {/* Timeline Column */}
         <div className="lg:col-span-8 space-y-12">
           <div className="relative">
-            <div className="absolute left-[3.25rem] top-0 bottom-0 w-px bg-gradient-to-b from-blue-500/50 via-slate-800 to-transparent hidden md:block"></div>
+            {/* Thread of Life Line - Perfectly aligned below circle nodes */}
+            <div className="absolute left-[7.5rem] top-0 bottom-0 w-[2px] bg-gradient-to-b from-blue-500/50 via-slate-800 to-transparent hidden md:block"></div>
             
             <div className="space-y-12">
               {persona.originFacts.length === 0 ? (
                 <div className="p-20 border border-dashed border-slate-800 rounded-[3rem] text-center opacity-30">
-                  <p className="text-xs font-mono uppercase tracking-widest">No life milestones indexed. Start by adding an event.</p>
+                  <p className="text-xs font-mono uppercase tracking-widest">No life milestones indexed.</p>
                 </div>
               ) : (
                 persona.originFacts.map((fact) => (
                   <div key={fact.id} className="flex gap-8 group animate-in slide-in-from-left-4">
+                    {/* Date Column */}
                     <div className="w-24 shrink-0 text-right space-y-1 pt-2">
-                      <div className="text-sm font-bold text-white font-mono break-words">{fact.date}</div>
+                      <div className="text-sm font-bold text-white font-mono break-words leading-tight">{fact.date}</div>
                       <div className={`text-[7px] font-bold uppercase tracking-[0.2em] ${
                         fact.category === 'CAREER' ? 'text-emerald-500' : 
                         fact.category === 'MILESTONE' ? 'text-blue-500' : 'text-purple-500'
@@ -294,28 +268,31 @@ const OriginStoryView: React.FC<OriginStoryViewProps> = ({ persona, setPersona, 
                       </div>
                     </div>
                     
-                    <div className="hidden md:flex flex-col items-center">
-                      <div className={`w-3 h-3 rounded-full bg-slate-900 border-2 transition-all group-hover:scale-125 z-10 mt-3 ${
+                    {/* Center Node Circle */}
+                    <div className="hidden md:flex flex-col items-center shrink-0 w-8">
+                      <div className={`w-4 h-4 rounded-full bg-slate-950 border-[3px] transition-all group-hover:scale-125 z-10 mt-3 ${
                         fact.category === 'CAREER' ? 'border-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 
                         fact.category === 'MILESTONE' ? 'border-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]' : 
                         'border-purple-500 shadow-[0_0_10px_rgba(168,85,247,0.5)]'
                       }`}></div>
                     </div>
 
+                    {/* Story Card */}
                     <div className="flex-grow bg-slate-900/30 border border-slate-900 p-8 rounded-[2.5rem] hover:border-slate-800 transition-all relative group/card">
+                      {/* Repositioned Actions to prevent overlap with Impact dots */}
                       {!isLocked && (
-                        <div className="absolute top-4 right-6 flex gap-3 opacity-0 group-hover/card:opacity-100 transition-opacity">
+                        <div className="absolute top-8 right-8 flex gap-3 opacity-0 group-hover/card:opacity-100 transition-opacity z-20">
                            <button 
                             onClick={() => setEditingFactId(editingFactId === fact.id ? null : fact.id)}
-                            className="p-2 text-slate-500 hover:text-white transition-colors"
+                            className="p-2 text-slate-600 hover:text-blue-400 transition-colors bg-slate-950/50 rounded-lg border border-slate-800"
                            >
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                            </button>
                            <button 
                             onClick={() => handleDeleteFact(fact.id)}
-                            className="p-2 text-slate-500 hover:text-red-500 transition-colors"
+                            className="p-2 text-slate-600 hover:text-red-500 transition-colors bg-slate-950/50 rounded-lg border border-slate-800"
                            >
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                            </button>
                         </div>
                       )}
@@ -353,10 +330,10 @@ const OriginStoryView: React.FC<OriginStoryViewProps> = ({ persona, setPersona, 
                           </button>
                         </div>
                       ) : (
-                        <>
-                          <div className="flex justify-between items-start mb-4">
+                        <div className="text-left">
+                          <div className="flex justify-between items-start mb-4 pr-24">
                              <h4 className="text-xl font-bold text-white uppercase tracking-tight font-heading">{fact.event}</h4>
-                             <div className="flex items-center gap-2">
+                             <div className="flex items-center gap-2 pr-4">
                                 <span className="text-[7px] text-slate-600 font-mono uppercase tracking-widest">Impact</span>
                                 <div className="flex gap-0.5">
                                    {[...Array(10)].map((_, idx) => (
@@ -374,7 +351,7 @@ const OriginStoryView: React.FC<OriginStoryViewProps> = ({ persona, setPersona, 
                              <span className="text-[8px] text-slate-600 font-mono uppercase tracking-widest">Significance:</span>
                              <span className="text-[8px] text-blue-400 font-mono uppercase tracking-widest italic">{fact.significance}</span>
                           </div>
-                        </>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -398,7 +375,7 @@ const OriginStoryView: React.FC<OriginStoryViewProps> = ({ persona, setPersona, 
 
             <div className="space-y-4">
               {persona.relationships.map(rel => (
-                <div key={rel.id} className="p-6 bg-slate-950 border border-slate-800 rounded-2xl group relative overflow-hidden text-left hover:border-rose-500/30 transition-all cursor-pointer" onClick={() => { if(!isLocked) { setEditingRelation(rel); setShowRelationModal(true); }}}>
+                <div key={rel.id} className="p-6 bg-slate-950 border border-slate-800 rounded-2xl group relative overflow-hidden text-left hover:border-emerald-500/30 transition-all cursor-pointer" onClick={() => { if(!isLocked) { setEditingRelation(rel); setShowRelationModal(true); }}}>
                   {!isLocked && (
                     <button 
                       onClick={(e) => { e.stopPropagation(); handleRemoveRelation(rel.id); }}
@@ -419,7 +396,7 @@ const OriginStoryView: React.FC<OriginStoryViewProps> = ({ persona, setPersona, 
               {!isLocked && (
                 <button 
                   onClick={() => { setEditingRelation({ type: 'SPOUSE' }); setShowRelationModal(true); }}
-                  className="w-full py-4 border border-dashed border-slate-800 rounded-2xl text-[9px] font-bold text-slate-600 uppercase tracking-widest hover:border-rose-500/50 hover:text-rose-400 transition-all"
+                  className="w-full py-4 border border-dashed border-slate-800 rounded-2xl text-[9px] font-bold text-slate-600 uppercase tracking-widest hover:border-emerald-500/50 hover:text-emerald-400 transition-all"
                 >
                   Bind Family Nexus
                 </button>
@@ -427,10 +404,10 @@ const OriginStoryView: React.FC<OriginStoryViewProps> = ({ persona, setPersona, 
             </div>
           </div>
 
-          {/* Soul Map Section */}
+          {/* Favorites & Interests Section */}
           <div className="p-10 bg-slate-900/50 border border-slate-800 rounded-[3rem] space-y-8 shadow-2xl">
             <div className="flex justify-between items-center">
-              <h4 className="text-[11px] font-bold text-white uppercase tracking-[0.3em] font-heading">Soul Map</h4>
+              <h4 className="text-[11px] font-bold text-white uppercase tracking-[0.3em] font-heading">Favorites & Interests</h4>
               <div className="w-8 h-8 rounded-full bg-cyan-500/10 flex items-center justify-center text-cyan-500">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
               </div>
@@ -448,7 +425,7 @@ const OriginStoryView: React.FC<OriginStoryViewProps> = ({ persona, setPersona, 
                         placeholder="Add (comma separated)..."
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') {
-                            updateInterests('hobbies', (e.target as HTMLInputElement).value + ',' + persona.interests.hobbies.join(','));
+                            updateInterests('hobbies', (e.target as HTMLInputElement).value);
                             (e.target as HTMLInputElement).value = '';
                           }
                         }}
@@ -459,17 +436,80 @@ const OriginStoryView: React.FC<OriginStoryViewProps> = ({ persona, setPersona, 
                </div>
 
                <div className="space-y-4">
-                  <div className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">The Soundscape (Music)</div>
+                  <div className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Authors & Literary Pillars</div>
                   <div className="flex flex-wrap gap-2">
-                    {persona.interests.music.map((m, i) => (
-                      <span key={i} className="px-3 py-1.5 bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-[9px] font-mono rounded-lg">{m}</span>
+                    {persona.interests.authors.map((a, i) => (
+                      <span key={i} className="px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[9px] font-mono rounded-lg">{a}</span>
                     ))}
                     {!isLocked && (
                       <input 
-                        placeholder="Add bands (comma separated)..."
+                        placeholder="Add (comma separated)..."
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') {
-                            updateInterests('music', (e.target as HTMLInputElement).value + ',' + persona.interests.music.join(','));
+                            updateInterests('authors', (e.target as HTMLInputElement).value);
+                            (e.target as HTMLInputElement).value = '';
+                          }
+                        }}
+                        className="bg-transparent border-b border-slate-800 text-[9px] text-slate-500 outline-none w-full mt-2 py-1"
+                      />
+                    )}
+                  </div>
+               </div>
+
+               <div className="space-y-4">
+                  <div className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Cinematic Influence (Movies)</div>
+                  <div className="flex flex-wrap gap-2">
+                    {persona.interests.movies.map((m, i) => (
+                      <span key={i} className="px-3 py-1.5 bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[9px] font-mono rounded-lg">{m}</span>
+                    ))}
+                    {!isLocked && (
+                      <input 
+                        placeholder="Add (comma separated)..."
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            updateInterests('movies', (e.target as HTMLInputElement).value);
+                            (e.target as HTMLInputElement).value = '';
+                          }
+                        }}
+                        className="bg-transparent border-b border-slate-800 text-[9px] text-slate-500 outline-none w-full mt-2 py-1"
+                      />
+                    )}
+                  </div>
+               </div>
+
+               <div className="space-y-4">
+                  <div className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Culinary Preferences (Foods)</div>
+                  <div className="flex flex-wrap gap-2">
+                    {persona.interests.foods.map((f, i) => (
+                      <span key={i} className="px-3 py-1.5 bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[9px] font-mono rounded-lg">{f}</span>
+                    ))}
+                    {!isLocked && (
+                      <input 
+                        placeholder="Add (comma separated)..."
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            updateInterests('foods', (e.target as HTMLInputElement).value);
+                            (e.target as HTMLInputElement).value = '';
+                          }
+                        }}
+                        className="bg-transparent border-b border-slate-800 text-[9px] text-slate-500 outline-none w-full mt-2 py-1"
+                      />
+                    )}
+                  </div>
+               </div>
+
+               <div className="space-y-4">
+                  <div className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Core Mantras & Philosophy</div>
+                  <div className="flex flex-wrap gap-2">
+                    {persona.interests.philosophy.map((p, i) => (
+                      <span key={i} className="px-3 py-2 bg-purple-500/10 border border-purple-500/20 text-purple-400 text-[9px] font-mono rounded-lg italic w-full">"{p}"</span>
+                    ))}
+                    {!isLocked && (
+                      <input 
+                        placeholder="Add quote (Enter to commit)..."
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            updateInterests('philosophy', (e.target as HTMLInputElement).value);
                             (e.target as HTMLInputElement).value = '';
                           }
                         }}
@@ -483,10 +523,10 @@ const OriginStoryView: React.FC<OriginStoryViewProps> = ({ persona, setPersona, 
         </div>
       </div>
 
-      {/* --- KINSHIP MODAL (RELATIONSHIP EDITOR) --- */}
+      {/* --- KINSHIP MODAL --- */}
       {showRelationModal && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-slate-950/90 backdrop-blur-xl animate-in fade-in duration-300">
-          <div className="max-w-2xl w-full bg-slate-900 border border-slate-800 p-12 rounded-[3.5rem] shadow-[0_0_100px_rgba(244,63,94,0.1)] space-y-10 animate-in zoom-in-95 duration-300">
+          <div className="max-w-2xl w-full bg-slate-900 border border-slate-800 p-12 rounded-[3.5rem] shadow-[0_0_100px_rgba(16,185,129,0.1)] space-y-10 animate-in zoom-in-95 duration-300">
              <div className="flex justify-between items-center border-b border-slate-800 pb-6">
                 <div className="text-left">
                   <h3 className="text-2xl font-bold font-heading text-white tracking-tight">Kinship Nexus Calibration</h3>
@@ -498,29 +538,35 @@ const OriginStoryView: React.FC<OriginStoryViewProps> = ({ persona, setPersona, 
              </div>
 
              <div className="grid md:grid-cols-2 gap-8 text-left">
-                <div className="space-y-4">
+                <div className="space-y-4 relative">
                   <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Connection Type</label>
-                  <select 
-                    value={editingRelation?.type}
-                    onChange={e => setEditingRelation({...editingRelation, type: e.target.value as any})}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-5 py-4 text-xs text-white outline-none focus:border-rose-500"
-                  >
-                    <option value="SPOUSE">SPOUSE</option>
-                    <option value="CHILD">CHILD</option>
-                    <option value="GRANDCHILD">GRANDCHILD</option>
-                    <option value="PET">PET</option>
-                    <option value="PARENT">PARENT</option>
-                    <option value="OTHER">OTHER</option>
-                  </select>
+                  <div className="relative group">
+                    <select 
+                      value={editingRelation?.type}
+                      onChange={e => setEditingRelation({...editingRelation, type: e.target.value as any})}
+                      className="w-full appearance-none bg-slate-950 border border-slate-800 rounded-xl px-5 py-4 text-xs text-white outline-none focus:border-emerald-500 transition-colors pr-12"
+                    >
+                      <option value="SPOUSE">SPOUSE</option>
+                      <option value="CHILD">CHILD</option>
+                      <option value="GRANDCHILD">GRANDCHILD</option>
+                      <option value="PET">PET</option>
+                      <option value="PARENT">PARENT</option>
+                      <option value="OTHER">OTHER</option>
+                    </select>
+                    {/* FIXED: Dropdown Arrow scooch left 5px (total 21px from right) */}
+                    <div className="absolute right-[21px] top-1/2 -translate-y-1/2 pointer-events-none text-slate-500 group-hover:text-emerald-500 transition-colors">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m6 9 6 6 6-6"/></svg>
+                    </div>
+                  </div>
                 </div>
-                <div className="space-y-4">
+                <div className="space-y-4 text-left">
                   <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Full Name / Identifier</label>
                   <input 
                     type="text" 
                     placeholder="e.g. Jane Mott" 
                     value={editingRelation?.name || ''}
                     onChange={e => setEditingRelation({...editingRelation, name: e.target.value})}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-5 py-4 text-xs text-white outline-none focus:border-rose-500" 
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-5 py-4 text-xs text-white outline-none focus:border-emerald-500 transition-colors" 
                   />
                 </div>
              </div>
@@ -533,7 +579,7 @@ const OriginStoryView: React.FC<OriginStoryViewProps> = ({ persona, setPersona, 
                     placeholder="MM/DD/YYYY" 
                     value={editingRelation?.birthDate || ''}
                     onChange={e => setEditingRelation({...editingRelation, birthDate: e.target.value})}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-5 py-4 text-xs text-white outline-none" 
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-5 py-4 text-xs text-white outline-none focus:border-emerald-500 transition-colors" 
                   />
                 </div>
                 <div className="space-y-4">
@@ -543,7 +589,7 @@ const OriginStoryView: React.FC<OriginStoryViewProps> = ({ persona, setPersona, 
                     placeholder="MM/DD/YYYY" 
                     value={editingRelation?.marriageDate || ''}
                     onChange={e => setEditingRelation({...editingRelation, marriageDate: e.target.value})}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-5 py-4 text-xs text-white outline-none" 
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-5 py-4 text-xs text-white outline-none focus:border-emerald-500 transition-colors" 
                   />
                 </div>
                 <div className="space-y-4">
@@ -553,7 +599,7 @@ const OriginStoryView: React.FC<OriginStoryViewProps> = ({ persona, setPersona, 
                     placeholder="City, State, Country" 
                     value={editingRelation?.place || ''}
                     onChange={e => setEditingRelation({...editingRelation, place: e.target.value})}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-5 py-4 text-xs text-white outline-none" 
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-5 py-4 text-xs text-white outline-none focus:border-emerald-500 transition-colors" 
                   />
                 </div>
              </div>
@@ -565,15 +611,16 @@ const OriginStoryView: React.FC<OriginStoryViewProps> = ({ persona, setPersona, 
                  value={editingRelation?.memories || ''}
                  onChange={e => setEditingRelation({...editingRelation, memories: e.target.value})}
                  rows={5}
-                 className="w-full bg-slate-950 border border-slate-800 rounded-[2rem] px-8 py-8 text-xs font-mono text-slate-400 outline-none resize-none focus:border-rose-500" 
+                 className="w-full bg-slate-950 border border-slate-800 rounded-[2rem] px-8 py-8 text-xs font-mono text-slate-400 outline-none resize-none focus:border-emerald-500 transition-colors" 
                />
              </div>
 
              <div className="flex gap-4">
-               <button onClick={handleSaveRelationship} className="flex-grow bg-rose-600 text-white py-5 rounded-2xl font-bold text-[10px] uppercase tracking-widest shadow-xl hover:bg-rose-500 transition-all">
+               {/* MODAL THEME: EMERALD (GREEN) */}
+               <button onClick={handleSaveRelationship} className="flex-grow bg-emerald-600 text-white py-5 rounded-2xl font-bold text-[10px] uppercase tracking-widest shadow-xl hover:bg-emerald-500 hover:scale-[1.01] transition-all">
                  Commit Relationship DNA
                </button>
-               <button onClick={() => setShowRelationModal(false)} className="px-12 py-5 bg-slate-950 text-slate-500 rounded-2xl text-[10px] font-bold uppercase tracking-widest">Cancel</button>
+               <button onClick={() => setShowRelationModal(false)} className="px-12 py-5 bg-slate-950 text-slate-500 rounded-2xl text-[10px] font-bold uppercase tracking-widest hover:text-slate-300 transition-colors">Cancel</button>
              </div>
           </div>
         </div>

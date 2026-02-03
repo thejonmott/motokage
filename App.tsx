@@ -46,6 +46,10 @@ const INITIAL_PERSONA: Persona = {
   interests: {
     hobbies: ['AI Architecture', 'Sailing', 'Analog Photography'],
     music: ['Massive Attack', 'Brian Eno', 'Max Richter'],
+    authors: [],
+    movies: [],
+    foods: [],
+    philosophy: ['Stay hungry, stay foolish'],
     other: []
   },
   accessLevel: 'AMBASSADOR'
@@ -63,11 +67,18 @@ const App: React.FC = () => {
         const parsed = JSON.parse(saved);
         
         // --- DNA MIGRATION LAYER ---
-        // We check for new fields and merge them without overwriting user data.
         const migrated = { ...INITIAL_PERSONA, ...parsed };
         
-        // Deep merge specific objects to prevent losing nested arrays
-        migrated.interests = { ...INITIAL_PERSONA.interests, ...(parsed.interests || {}) };
+        // Deep merge interests to prevent missing new keys
+        migrated.interests = { 
+          ...INITIAL_PERSONA.interests, 
+          ...(parsed.interests || {}),
+          authors: parsed.interests?.authors || [],
+          movies: parsed.interests?.movies || [],
+          foods: parsed.interests?.foods || [],
+          philosophy: parsed.interests?.philosophy || []
+        };
+        
         migrated.originFacts = parsed.originFacts || INITIAL_PERSONA.originFacts;
         migrated.relationships = parsed.relationships || [];
         migrated.mandates = parsed.mandates || INITIAL_PERSONA.mandates;
