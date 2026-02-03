@@ -13,6 +13,7 @@ export enum TabType {
 export type MemoryCategory = 'axiom' | 'chronos' | 'echo' | 'logos' | 'ethos';
 export type SensitivityLevel = 'PRIVATE' | 'PUBLIC';
 export type AccessLevel = 'CORE' | 'AMBASSADOR';
+export type OriginCategory = 'CAREER' | 'MILESTONE' | 'PERSONAL' | 'RELATIONAL';
 
 export interface MemoryShard {
   id: string;
@@ -21,6 +22,7 @@ export interface MemoryShard {
   content: string;
   active: boolean;
   sensitivity: SensitivityLevel;
+  audioData?: string; // Base64 raw audio
 }
 
 export interface Agent {
@@ -43,9 +45,23 @@ export interface Mandate {
 
 export interface OriginFact {
   id: string;
-  year: string;
+  date: string; 
   event: string;
   significance: string;
+  details?: string;
+  category: OriginCategory;
+  impact: number;
+}
+
+export interface Relationship {
+  id: string;
+  type: 'SPOUSE' | 'CHILD' | 'GRANDCHILD' | 'PET' | 'PARENT' | 'OTHER';
+  name: string;
+  birthDate?: string;
+  marriageDate?: string;
+  place?: string;
+  memories?: string;
+  details?: string;
 }
 
 export interface Persona {
@@ -58,6 +74,17 @@ export interface Persona {
   memoryShards: MemoryShard[];
   mandates: Mandate[];
   originFacts: OriginFact[];
+  relationships: Relationship[];
+  interests: {
+    hobbies: string[];
+    music: string[];
+    authors: string[];
+    movies: string[];
+    foods: string[];
+    philosophy: string[];
+    other: string[];
+  };
+  vocalSignature?: string[]; // Array of base64 audio samples
   accessLevel: AccessLevel;
 }
 
@@ -67,19 +94,13 @@ export interface Message {
   timestamp: Date;
 }
 
-// Global scope augmentation for environment-provided objects to resolve conflicts
 declare global {
-  /**
-   * Interface for the AI Studio API key management utility provided by the environment.
-   * Defined here to ensure identity with the global object's type across potential multiple declarations.
-   */
   interface AIStudio {
     hasSelectedApiKey: () => Promise<boolean>;
     openSelectKey: () => Promise<void>;
   }
 
   interface Window {
-    // Removed readonly modifier to match the platform's injected global scope declaration and resolve modifier conflict.
-    aistudio: AIStudio;
+    aistudio?: AIStudio;
   }
 }
