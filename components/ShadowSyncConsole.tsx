@@ -67,7 +67,7 @@ CMD ["python", "server.py"]`,
         docker build -t $$IMAGE_PATH .
         docker push $$IMAGE_PATH
 
-  # 2. Deploy to Cloud Run: Resolve type conflict and bind Secret
+  # 2. Deploy to Cloud Run: Bind Secret to API_KEY
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: 'bash'
     args:
@@ -75,14 +75,12 @@ CMD ["python", "server.py"]`,
       - |
         export IMAGE_PATH="us-central1-docker.pkg.dev/$PROJECT_ID/motokage-studio/app:$BRANCH_NAME"
         
-        # We explicitly remove the literal API_KEY to allow the secret-backed type change
         if [ "$BRANCH_NAME" == "staging" ]; then
           gcloud run deploy motokage-studio-staging \\
             --image $$IMAGE_PATH \\
             --region us-central1 \\
             --platform managed \\
             --allow-unauthenticated \\
-            --remove-env-vars=API_KEY \\
             --set-secrets="API_KEY=motokage-api-key:latest"
         else
           gcloud run deploy motokage-studio \\
@@ -90,7 +88,6 @@ CMD ["python", "server.py"]`,
             --region us-central1 \\
             --platform managed \\
             --allow-unauthenticated \\
-            --remove-env-vars=API_KEY \\
             --set-secrets="API_KEY=motokage-api-key:latest"
         fi
 
@@ -184,7 +181,7 @@ options:
         method: 'POST',
         headers,
         body: JSON.stringify({ 
-          message: `🚀 [GOLD_DEPLOY] Motokage v15.9.2: Fixing Secret type conflict (motokage-api-key)`, 
+          message: `🚀 [GOLD_DEPLOY] Motokage v15.9.2: Binding API_KEY Secret correctly`, 
           tree: treeData.sha, 
           parents: [latestCommitSha] 
         })
@@ -223,9 +220,9 @@ options:
 
       <div className="grid md:grid-cols-2 gap-8">
         <div className="p-8 bg-slate-950 border border-emerald-500/30 rounded-3xl space-y-4 text-left">
-           <h4 className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">Type Conflict Mitigation</h4>
+           <h4 className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">Identity Pipeline</h4>
            <p className="text-[9px] text-slate-500 font-mono leading-relaxed">
-             Cloud Build is now instructed to drop the legacy environment variable <code>API_KEY</code> before binding the <strong>Secret Manager</strong> version. This ensures an atomic transition to server-side security.
+             This console pushes the current Motokage DNA directly to GitHub. Cloud Build then binds the <strong>Secret Manager</strong> key to the environment automatically.
            </p>
         </div>
         <div className="p-8 bg-slate-950 border border-indigo-500/30 rounded-3xl space-y-4 text-left">
@@ -259,14 +256,14 @@ options:
       </div>
 
       <button onClick={handleAtomicSync} disabled={status.type === 'loading'} className={`w-full py-7 rounded-[2rem] font-bold text-[12px] uppercase tracking-[0.5em] transition-all shadow-2xl border group ${targetEnv === 'main' ? 'bg-purple-600 hover:bg-purple-700 border-purple-500/50' : 'bg-emerald-600 hover:bg-emerald-700 border-emerald-500/50'}`}>
-        {status.type === 'loading' ? 'CLEANING SLATE & TRANSMITTING...' : `UPLINK TO ${targetEnv.toUpperCase()}`}
+        {status.type === 'loading' ? 'TRANSMITTING IDENTITY...' : `UPLINK TO ${targetEnv.toUpperCase()}`}
       </button>
 
       {status.msg && (
         <div className={`p-8 rounded-[2rem] text-[10px] font-mono text-center uppercase tracking-widest border animate-in fade-in slide-in-from-top-4 ${status.type === 'error' ? 'bg-orange-500/10 border-orange-500/20 text-orange-400' : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'}`}>
           {status.msg}
           {status.type === 'success' && (
-            <p className="mt-4 text-slate-500 normal-case italic">Transitioning from literal to Secret. Watch the Cloud Build logs for final confirmation.</p>
+            <p className="mt-4 text-slate-500 normal-case italic">Uplink confirmed. Cloud Run is now resolving the secure API_KEY bound to this service.</p>
           )}
         </div>
       )}

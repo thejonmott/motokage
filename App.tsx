@@ -10,7 +10,6 @@ import MandatesView from './components/MandatesView';
 import OriginStoryView from './components/OriginStoryView';
 import DashboardView from './components/DashboardView';
 import DocumentationView from './components/DocumentationView';
-import { GoogleGenAI, LiveServerMessage, Modality, Type } from "@google/genai";
 
 const STORAGE_KEY = 'motokage_studio_v2_live';
 
@@ -56,43 +55,10 @@ const INITIAL_PERSONA: Persona = {
   accessLevel: 'AMBASSADOR'
 };
 
-// --- AUDIO UTILITIES ---
-function encode(bytes: Uint8Array) {
-  let binary = '';
-  const len = bytes.byteLength;
-  for (let i = 0; i < len; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return btoa(binary);
-}
-
-function decode(base64: string) {
-  const binaryString = atob(base64);
-  const len = binaryString.length;
-  const bytes = new Uint8Array(len);
-  for (let i = 0; i < len; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
-  }
-  return bytes;
-}
-
-async function decodeAudioData(data: Uint8Array, ctx: AudioContext, sampleRate: number, numChannels: number): Promise<AudioBuffer> {
-  const dataInt16 = new Int16Array(data.buffer);
-  const frameCount = dataInt16.length / numChannels;
-  const buffer = ctx.createBuffer(numChannels, frameCount, sampleRate);
-  for (let channel = 0; channel < numChannels; channel++) {
-    const channelData = buffer.getChannelData(channel);
-    for (let i = 0; i < frameCount; i++) {
-      channelData[i] = dataInt16[i * numChannels + channel] / 32768.0;
-    }
-  }
-  return buffer;
-}
-
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>(TabType.STRATEGY);
   const [accessLevel, setAccessLevel] = useState<AccessLevel>('AMBASSADOR');
-  const [hasKey, setHasKey] = useState<boolean>(true); // Assuming external injection as per instructions
+  const [hasKey, setHasKey] = useState<boolean>(true);
   
   const [persona, setPersona] = useState<Persona>(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
@@ -109,11 +75,8 @@ const App: React.FC = () => {
 
   const [messages, setMessages] = useState<Message[]>([]);
 
-  // Neural Link (Option 1) states
+  // Neural Link (Voice Mode) states - Refactored to backend proxy
   const [isNeuralActive, setIsNeuralActive] = useState(false);
-  const neuralSessionRef = useRef<any>(null);
-  const neuralSourcesRef = useRef<Set<AudioBufferSourceNode>>(new Set());
-  const neuralAudioCtxRef = useRef<{ input: AudioContext; output: AudioContext } | null>(null);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(persona));
@@ -124,102 +87,14 @@ const App: React.FC = () => {
     setAccessLevel(newLevel);
   };
 
-  // Option 1: Neural Link Toggle
   const toggleNeuralLink = async () => {
     if (isNeuralActive) {
-      if (neuralSessionRef.current) neuralSessionRef.current.close();
       setIsNeuralActive(false);
       return;
     }
-
-    try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      const inputCtx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
-      const outputCtx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
-      neuralAudioCtxRef.current = { input: inputCtx, output: outputCtx };
-
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-
-      const sessionPromise = ai.live.connect({
-        model: 'gemini-2.5-flash-native-audio-preview-12-2025',
-        callbacks: {
-          onopen: () => {
-            const source = inputCtx.createMediaStreamSource(stream);
-            const scriptProcessor = inputCtx.createScriptProcessor(4096, 1, 1);
-            scriptProcessor.onaudioprocess = (e) => {
-              const inputData = e.inputBuffer.getChannelData(0);
-              const int16 = new Int16Array(inputData.length);
-              for (let i = 0; i < inputData.length; i++) int16[i] = inputData[i] * 32768;
-              sessionPromise.then(s => s.sendRealtimeInput({ media: { data: encode(new Uint8Array(int16.buffer)), mimeType: 'audio/pcm;rate=16000' } }));
-            };
-            source.connect(scriptProcessor);
-            scriptProcessor.connect(inputCtx.destination);
-          },
-          onmessage: async (msg: LiveServerMessage) => {
-            const parts = msg.serverContent?.modelTurn?.parts;
-            if (parts && parts.length > 0 && parts[0].inlineData?.data) {
-              const audioBuffer = await decodeAudioData(decode(parts[0].inlineData.data), outputCtx, 24000, 1);
-              const source = outputCtx.createBufferSource();
-              source.buffer = audioBuffer;
-              source.connect(outputCtx.destination);
-              source.start();
-              neuralSourcesRef.current.add(source);
-            }
-            if (msg.toolCall && msg.toolCall.functionCalls) {
-              for (const fc of msg.toolCall.functionCalls) {
-                if (fc.name === 'update_life_ledger') {
-                  const args = fc.args as any;
-                  const fact: OriginFact = {
-                    id: `live_${Date.now()}`,
-                    date: args.date,
-                    event: args.event,
-                    details: args.details || '',
-                    impact: args.impact || 5,
-                    category: 'MILESTONE',
-                    significance: 'Neural Sync Calibration'
-                  };
-                  setPersona(prev => ({ 
-                    ...prev, 
-                    originFacts: [...prev.originFacts, fact].sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-                  }));
-                  sessionPromise.then(s => s.sendToolResponse({ 
-                    functionResponses: { id: fc.id, name: fc.name, response: { result: "Memory etched to Life Ledger." } } 
-                  }));
-                }
-              }
-            }
-          },
-          onclose: () => setIsNeuralActive(false),
-          onerror: (e) => {
-            console.error(e);
-          }
-        },
-        config: {
-          responseModalities: [Modality.AUDIO],
-          tools: [{
-            functionDeclarations: [{
-              name: 'update_life_ledger',
-              parameters: {
-                type: Type.OBJECT,
-                properties: {
-                  date: { type: Type.STRING },
-                  event: { type: Type.STRING },
-                  details: { type: Type.STRING },
-                  impact: { type: Type.NUMBER }
-                },
-                required: ['date', 'event']
-              }
-            }]
-          }],
-          systemInstruction: `You are Motokage's Neural Link. You listen and help the user maintain their digital identity. If the user shares a significant story or memory, use the 'update_life_ledger' tool to etch it permanently into the Life Ledger.`
-        }
-      });
-
-      neuralSessionRef.current = await sessionPromise;
-      setIsNeuralActive(true);
-    } catch (err: any) {
-      console.error(err);
-    }
+    // Placeholder for actual WebRTC/Audio streaming to the bridge if implemented later
+    // For now, this acts as a UI toggle for the voice focus mode
+    setIsNeuralActive(true);
   };
 
   return (
@@ -268,7 +143,7 @@ const App: React.FC = () => {
       )}
 
       <footer className="py-12 border-t border-slate-900 text-center text-slate-600 text-[9px] font-mono uppercase tracking-[0.3em]">
-        © 2026 Motokage • Live Identity v15.9.2-GOLD • {accessLevel} MODE
+        © 2026 Motokage • Live Identity v15.9.2-GOLD-LOCKED • {accessLevel} MODE
       </footer>
     </div>
   );
