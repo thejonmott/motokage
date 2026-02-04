@@ -16,24 +16,30 @@ app = Flask(__name__, static_folder='dist')
 CORS(app)
 
 # Configure Gemini - API Key is sourced server-side via Secret Manager in Cloud Run
+# Cloud Assist Recommendation: Explicitly log key presence
 API_KEY = os.getenv('API_KEY') or os.getenv('GEMINI_API_KEY')
+
 if API_KEY:
-    logger.info("BRIDGE_STATUS: API_KEY detected. Initializing cognitive core.")
+    # Diagnostic logging: confirms the key is found and shows the first few chars for validation
+    prefix = API_KEY[:6] if len(API_KEY) > 6 else "SHORT"
+    logger.info(f"BRIDGE_STATUS: API_KEY detected (Prefix: {prefix}...). Initializing cognitive core.")
     genai.configure(api_key=API_KEY)
 else:
-    logger.error("CRITICAL_FAILURE: API_KEY missing. Cognitive bridge will remain offline.")
+    logger.error("CRITICAL_FAILURE: API_KEY missing. Ensure 'motokage-api-key' is correctly bound to 'API_KEY' in Cloud Run.")
 
 @app.route('/api/health', methods=['GET'])
 def health():
     return jsonify({
         'status': 'nominal',
         'key_active': API_KEY is not None,
+        'key_prefix': API_KEY[:4] if API_KEY else None,
         'timestamp': time.time(),
         'version': 'v15.9.2-GOLD-LOCKED'
     })
 
 @app.route('/api/chat', methods=['POST'])
 def chat():
+    """Fallback proxy for legacy systems or secure instruction injection."""
     try:
         if not API_KEY:
             return jsonify({'error': 'Cognitive bridge offline: API Key not bound.'}), 500
@@ -44,18 +50,11 @@ def chat():
         system_instruction = data.get('systemInstruction', '')
         model_name = data.get('model', 'gemini-3-flash-preview')
 
-        logger.info(f"Synthesizing request via {model_name}...")
-        
-        # Robust Stateless Pattern: 
-        # We manually construct the conversation parts rather than relying on chat_session
-        # This prevents hanging during history synchronization in serverless workers.
         model = genai.GenerativeModel(
             model_name=model_name, 
             system_instruction=system_instruction
         )
         
-        # Convert history to the format expected by the Python SDK
-        # parts must be a list of strings for standard chat history
         formatted_contents = []
         for h in history:
             role = "user" if h['role'] == 'user' else "model"
@@ -63,15 +62,11 @@ def chat():
             if text_val:
                 formatted_contents.append({"role": role, "parts": [text_val]})
         
-        # Add the current message
         formatted_contents.append({"role": "user", "parts": [message]})
-
-        # Execute generation
         response = model.generate_content(formatted_contents)
         
         if not response.candidates or not response.candidates[0].content.parts:
-            logger.warning("Empty candidate response from model.")
-            return jsonify({'text': '[SYSTEM_ALERT]: No cognitive response generated. Content may have triggered a safety filter.'})
+            return jsonify({'text': '[SYSTEM_ALERT]: No cognitive response generated. Content may have been filtered.'})
             
         return jsonify({'text': response.text})
 

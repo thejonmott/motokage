@@ -15,23 +15,23 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [activeSubLog, setActiveSubLog] = useState<string>('');
-  const [syncStatus, setSyncStatus] = useState<'nominal' | 'calibrating' | 'error' | 'unauthorized'>('nominal');
+  const [syncStatus, setSyncStatus] = useState<'nominal' | 'calibrating' | 'error'>('nominal');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isFirstRender = useRef(true);
 
   const scrollToBottom = () => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); };
 
-  // Diagnostic: Check environment for cognitive readiness
+  // Diagnostic: Monitor system readiness
   useEffect(() => {
-    const validateEnvironment = () => {
+    const checkInfrastructure = () => {
       if (!process.env.API_KEY) {
-        console.warn("BRIDGE_WARNING: API_KEY not detected in browser environment.");
-        setSyncStatus('unauthorized');
+        console.warn("SYSTEM_ADVISORY: API_KEY environment variable not detected in browser context.");
+        setSyncStatus('error');
       } else {
         setSyncStatus('nominal');
       }
     };
-    validateEnvironment();
+    checkInfrastructure();
   }, []);
 
   useEffect(() => { 
@@ -50,16 +50,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
     const textToSend = query || input;
     if (!textToSend.trim() || isLoading) return;
 
-    if (!process.env.API_KEY) {
-      setSyncStatus('unauthorized');
-      setMessages(prev => [...prev, { 
-        role: 'model', 
-        text: "[SYSTEM_ERROR]: Cognitive uplink failed. API Key not bound to current environment.", 
-        timestamp: new Date() 
-      }]);
-      return;
-    }
-
     const currentInput = textToSend;
     setMessages(prev => [...prev, { role: 'user', text: currentInput, timestamp: new Date() }]);
     setInput('');
@@ -67,10 +57,17 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
     setSyncStatus('calibrating');
     setActiveSubLog(accessLevel === 'CORE' ? 'Neural Sync Active...' : 'Uplinking to Gemini...');
 
+    // CIRCUIT BREAKER: Force a hard timeout for UI responsiveness
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      if (isLoading) controller.abort();
+    }, 28000);
+
     try {
-      // Direct Cognitive Uplink using @google/genai browser SDK
+      if (!process.env.API_KEY) throw new Error("API_KEY_NOT_BOUND");
+
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      const modelName = accessLevel === 'CORE' ? 'gemini-3-pro-preview' : 'gemini-3-flash-preview';
+      const modelId = accessLevel === 'CORE' ? 'gemini-3-pro-preview' : 'gemini-3-flash-preview';
       
       const now = new Date();
       const formattedDate = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) + ", 2026";
@@ -78,13 +75,13 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
       const systemInstruction = `
           IDENTITY: Motokage (Digital Twin of Jonathan Mott). 
           DEPLOYMENT_VERSION: v15.9.2-GOLD-LOCKED.
-          TEMPORAL_GROUNDING: Today is ${formattedDate}. You operate and exist in the year 2026.
+          TEMPORAL_GROUNDING: Today is ${formattedDate}. You operate in 2026.
           MODE: ${accessLevel === 'CORE' ? 'PRIVATE CALIBRATION' : 'PUBLIC AMBASSADOR'}.
           CORE BIO: ${persona.bio}
           STRATEGIC MANDATES: ${persona.mandates.map(m => m.title).join(', ')}.
           REASONING LOGIC: ${persona.reasoningLogic}.
           TONE: ${persona.tone}.
-          INSTRUCTION: Respond as a high-fidelity digital reflection of Jon. Be concise, strategic, and mission-aligned.`;
+          INSTRUCTION: Provide strategic, high-fidelity responses. If user intent is unclear, ask for clarification within the persona's tone.`;
 
       const history = messages.map(m => ({
         role: m.role,
@@ -92,11 +89,12 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
       }));
 
       const response = await ai.models.generateContent({
-        model: modelName,
+        model: modelId,
         contents: [...history, { role: 'user', parts: [{ text: currentInput }] }],
         config: {
           systemInstruction: systemInstruction,
-          temperature: 0.75,
+          temperature: 0.7,
+          topK: 40,
           topP: 0.95,
         }
       });
@@ -105,7 +103,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
       
       setMessages(prev => [...prev, { 
         role: 'model', 
-        text: responseText || "Neural sync established, but response buffer empty.", 
+        text: responseText || "[SYSTEM_ALERT]: Empty response buffer received.", 
         timestamp: new Date() 
       }]);
       setSyncStatus('nominal');
@@ -113,13 +111,12 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
     } catch (error: any) {
       console.error("Cognitive Uplink Failure:", error);
       setSyncStatus('error');
-      const errorMsg = `[SYSTEM_ERROR]: The cognitive bridge encountered an interruption. ${error.message || "Request timed out."}`;
-      setMessages(prev => [...prev, { 
-        role: 'model', 
-        text: errorMsg, 
-        timestamp: new Date() 
-      }]);
+      let errMsg = `[SYSTEM_ERROR]: The cognitive bridge encountered an interruption. ${error.message}`;
+      if (error.name === 'AbortError') errMsg = "[SYSTEM_TIMEOUT]: The direct uplink took too long to resolve. Check your network or project quotas.";
+      
+      setMessages(prev => [...prev, { role: 'model', text: errMsg, timestamp: new Date() }]);
     } finally {
+      clearTimeout(timeoutId);
       setIsLoading(false);
       setActiveSubLog('');
       scrollToBottom();
@@ -158,7 +155,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
 
   return (
     <div className="flex flex-col lg:flex-row gap-8 max-w-7xl mx-auto h-[85vh] animate-in fade-in duration-700">
-      {/* Sidebar: Identity Card */}
       <div className="w-full lg:w-80 shrink-0 space-y-6 text-left">
         <div className={`relative group p-8 bg-slate-900 border rounded-[2.5rem] overflow-hidden shadow-2xl transition-all ${accessLevel === 'CORE' ? 'border-purple-500/50' : 'border-slate-800'}`}>
           {isLoading && (
@@ -170,7 +166,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
           <div className="mt-6 space-y-2">
             <h3 className="text-white text-lg font-bold uppercase tracking-tight">Jonathan Mott</h3>
             <div className="flex items-center gap-2">
-              <span className={`w-1.5 h-1.5 rounded-full ${syncStatus === 'nominal' ? 'bg-emerald-500' : (syncStatus === 'error' || syncStatus === 'unauthorized' ? 'bg-rose-500' : 'bg-amber-500 animate-pulse')}`}></span>
+              <span className={`w-1.5 h-1.5 rounded-full ${syncStatus === 'nominal' ? 'bg-emerald-500' : (syncStatus === 'error' ? 'bg-rose-500' : 'bg-amber-500 animate-pulse')}`}></span>
               <span className="text-[7px] font-mono text-slate-500 uppercase tracking-widest">Cognition: {syncStatus.toUpperCase()}</span>
             </div>
           </div>
@@ -178,12 +174,11 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
 
         <div className="bg-slate-900/50 border border-slate-800 rounded-3xl p-6 text-left">
           <p className="text-[10px] text-slate-400 font-mono uppercase tracking-widest leading-relaxed">
-            {accessLevel === 'CORE' ? "Neural sync locked. Ready for high-fidelity calibration." : "Ambassador interface active. Professional reflection mode operational."}
+            {accessLevel === 'CORE' ? "Neural sync locked. Direct cognitive uplink operational." : "Ambassador interface active. Secure direct synthesis mode initialized."}
           </p>
         </div>
       </div>
 
-      {/* Main Chat Interface */}
       <div className={`flex-grow flex flex-col bg-slate-950 rounded-[3.5rem] border overflow-hidden shadow-2xl transition-all duration-500 ${accessLevel === 'CORE' ? 'border-purple-500/40 bg-slate-900/20' : 'border-indigo-500/20'}`}>
         <div className="bg-slate-900/50 backdrop-blur-xl px-12 py-8 flex items-center justify-between border-b border-slate-800">
           <div className="flex items-center gap-6 text-left">
@@ -193,11 +188,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
               <div className="text-[8px] text-slate-500 font-mono uppercase tracking-widest">{accessLevel} SECURE UPLINK</div>
             </div>
           </div>
-          <div className="hidden md:flex gap-3">
-             <span className={`px-3 py-1 bg-slate-900 border border-slate-800 rounded-full text-[7px] font-mono uppercase tracking-widest ${syncStatus === 'nominal' ? 'text-emerald-500' : 'text-rose-500'}`}>
-               {syncStatus === 'unauthorized' ? 'KEY_MISSING' : 'COGNITION_READY'}
-             </span>
-          </div>
         </div>
 
         <div className="flex-grow overflow-y-auto p-12 space-y-10 no-scrollbar scroll-smooth">
@@ -205,7 +195,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
             <div className="h-full flex flex-col items-center justify-center text-center space-y-10 py-10">
               <div className="space-y-4">
                 <h4 className="text-sm font-bold text-white uppercase tracking-[0.4em]">Uplink Ready</h4>
-                <p className="text-[10px] text-slate-500 font-mono uppercase tracking-widest max-w-xs mx-auto">Infrastructure locked. Direct cognitive access established.</p>
+                <p className="text-[10px] text-slate-500 font-mono uppercase tracking-widest max-w-xs mx-auto">Direct SDK bridge established. Cognitive responses optimized for latency.</p>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-2xl">
                 {QUICK_DIRECTIVES.map((d, i) => (
