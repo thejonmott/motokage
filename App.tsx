@@ -60,6 +60,7 @@ const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>(TabType.STRATEGY);
   const [accessLevel, setAccessLevel] = useState<AccessLevel>('AMBASSADOR');
   const [hasKey, setHasKey] = useState<boolean>(true);
+  const [cloudSyncStatus, setCloudSyncStatus] = useState<'idle' | 'detected' | 'failed'>('idle');
   
   const [persona, setPersona] = useState<Persona>(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
@@ -80,6 +81,28 @@ const App: React.FC = () => {
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [isNeuralActive, setIsNeuralActive] = useState(false);
+
+  // Cloud Hydration: Attempt to fetch the deployed configuration from the container
+  useEffect(() => {
+    fetch('/shadow_config.json')
+      .then(res => {
+        if (!res.ok) throw new Error("No cloud config found");
+        return res.json();
+      })
+      .then(data => {
+        if (data && data.name) {
+          console.log("[Motokage System]: Cloud DNA Detected. Hydrating...");
+          setPersona(prev => ({ ...prev, ...data }));
+          setCloudSyncStatus('detected');
+          // Update local storage to match the authoritative cloud source
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        }
+      })
+      .catch(() => {
+        console.log("[Motokage System]: Running on Local State.");
+        setCloudSyncStatus('failed');
+      });
+  }, []);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(persona));
@@ -116,6 +139,14 @@ const App: React.FC = () => {
           {activeTab === TabType.DASHBOARD && <DashboardView persona={persona} setPersona={setPersona} accessLevel={accessLevel} />}
         </div>
       </main>
+
+      {/* Cloud Sync Indicator Toast */}
+      {cloudSyncStatus === 'detected' && (
+        <div className="fixed top-24 right-8 z-40 bg-indigo-500/10 border border-indigo-500/20 px-4 py-2 rounded-xl flex items-center gap-3 animate-in slide-in-from-right-10 fade-out duration-1000 delay-[5000ms] fill-mode-forwards">
+           <div className="w-2 h-2 bg-indigo-500 rounded-full animate-pulse"></div>
+           <span className="text-[9px] font-bold text-indigo-400 uppercase tracking-widest">Cloud DNA Hydrated</span>
+        </div>
+      )}
 
       {accessLevel === 'CORE' && (
         <div className="fixed bottom-12 right-12 z-[100] group">
