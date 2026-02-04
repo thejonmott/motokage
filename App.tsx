@@ -11,7 +11,8 @@ import OriginStoryView from './components/OriginStoryView';
 import DashboardView from './components/DashboardView';
 import DocumentationView from './components/DocumentationView';
 
-const STORAGE_KEY = 'motokage_studio_v2_live';
+// ARCHITECTURE CHANGE: Local Storage key removed. 
+// Data is now volatile RAM until synced to Cloud.
 
 const INITIAL_PERSONA: Persona = {
   name: '元影 (Motokage)',
@@ -62,27 +63,16 @@ const App: React.FC = () => {
   const [hasKey, setHasKey] = useState<boolean>(true);
   const [cloudSyncStatus, setCloudSyncStatus] = useState<'idle' | 'detected' | 'failed'>('idle');
   
-  const [persona, setPersona] = useState<Persona>(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        // Migration check for old interest format
-        if (Array.isArray(parsed.interests?.music)) {
-          parsed.interests.bands = parsed.interests.music.map((m: string) => ({ id: Math.random().toString(), name: m }));
-        }
-        return { ...INITIAL_PERSONA, ...parsed };
-      } catch (e) {
-        return INITIAL_PERSONA;
-      }
-    }
-    return INITIAL_PERSONA;
-  });
+  // STATE ARCHITECTURE:
+  // 1. Initialize with Factory Defaults (INITIAL_PERSONA).
+  // 2. Attempt to hydrate from Cloud (shadow_config.json).
+  // 3. No local persistence. Browser refresh = Reset to Cloud State.
+  const [persona, setPersona] = useState<Persona>(INITIAL_PERSONA);
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [isNeuralActive, setIsNeuralActive] = useState(false);
 
-  // Cloud Hydration: Attempt to fetch the deployed configuration from the container
+  // Cloud Hydration: Fetch the deployed configuration from the container
   useEffect(() => {
     fetch('/shadow_config.json')
       .then(res => {
@@ -92,21 +82,16 @@ const App: React.FC = () => {
       .then(data => {
         if (data && data.name) {
           console.log("[Motokage System]: Cloud DNA Detected. Hydrating...");
+          // Merge with initial to ensure schema compatibility if new fields were added
           setPersona(prev => ({ ...prev, ...data }));
           setCloudSyncStatus('detected');
-          // Update local storage to match the authoritative cloud source
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
         }
       })
       .catch(() => {
-        console.log("[Motokage System]: Running on Local State.");
+        console.log("[Motokage System]: Cloud DNA not found. Running on Factory Default.");
         setCloudSyncStatus('failed');
       });
   }, []);
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(persona));
-  }, [persona]);
 
   const handleLevelChange = (newLevel: AccessLevel) => {
     if (newLevel === 'AMBASSADOR') setActiveTab(TabType.STRATEGY);
@@ -125,6 +110,7 @@ const App: React.FC = () => {
         accessLevel={accessLevel}
         setAccessLevel={handleLevelChange}
         hasKey={hasKey}
+        syncStatus={cloudSyncStatus}
       />
       
       <main className="container mx-auto px-6 py-12 max-w-7xl">
@@ -142,9 +128,9 @@ const App: React.FC = () => {
 
       {/* Cloud Sync Indicator Toast */}
       {cloudSyncStatus === 'detected' && (
-        <div className="fixed top-24 right-8 z-40 bg-indigo-500/10 border border-indigo-500/20 px-4 py-2 rounded-xl flex items-center gap-3 animate-in slide-in-from-right-10 fade-out duration-1000 delay-[5000ms] fill-mode-forwards">
-           <div className="w-2 h-2 bg-indigo-500 rounded-full animate-pulse"></div>
-           <span className="text-[9px] font-bold text-indigo-400 uppercase tracking-widest">Cloud DNA Hydrated</span>
+        <div className="fixed top-24 right-8 z-40 bg-emerald-500/10 border border-emerald-500/20 px-4 py-2 rounded-xl flex items-center gap-3 animate-in slide-in-from-right-10 fade-out duration-1000 delay-[5000ms] fill-mode-forwards">
+           <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+           <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-widest">Cloud DNA Hydrated</span>
         </div>
       )}
 
@@ -160,7 +146,7 @@ const App: React.FC = () => {
                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-white z-10"><path d="M12 2a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
               </div>
             ) : (
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-purple-400 group-hover:text-white transition-colors"><path d="M12 2a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V5a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-purple-400 group-hover:text-white transition-colors"><path d="M12 2a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
             )}
           </button>
           <div className="absolute bottom-full right-0 mb-4 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-900 border border-purple-500/30 px-4 py-2 rounded-xl text-[9px] font-bold text-purple-400 uppercase tracking-widest whitespace-nowrap">

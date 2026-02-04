@@ -8,6 +8,7 @@ interface HeaderProps {
   accessLevel: AccessLevel;
   setAccessLevel: (level: AccessLevel) => void;
   hasKey: boolean;
+  syncStatus?: 'idle' | 'detected' | 'failed';
 }
 
 const Icons = {
@@ -51,7 +52,7 @@ const TabConfig = {
   [TabType.DASHBOARD]: { label: 'Dashboard', icon: <Icons.Dashboard /> },
 };
 
-const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, accessLevel, setAccessLevel, hasKey }) => {
+const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, accessLevel, setAccessLevel, hasKey, syncStatus = 'idle' }) => {
   const [showAuthOverlay, setShowAuthOverlay] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const [hwStatus, setHwStatus] = useState<'IDLE' | 'DETECTED' | 'UNAVAILABLE'>('IDLE');
@@ -102,8 +103,10 @@ const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, accessLevel, s
             </div>
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-1.5">
-                <span className={`w-1 h-1 rounded-full animate-pulse ${hasKey ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
-                <span className="text-[7px] font-mono text-slate-500 tracking-widest uppercase">Uplink: {hasKey ? 'NOMINAL' : 'OFFLINE'}</span>
+                <span className={`w-1 h-1 rounded-full animate-pulse ${syncStatus === 'detected' ? 'bg-emerald-500' : 'bg-amber-500'}`}></span>
+                <span className="text-[7px] font-mono text-slate-500 tracking-widest uppercase">
+                  SOURCE: {syncStatus === 'detected' ? 'CLOUD' : 'FACTORY'}
+                </span>
               </div>
               <div className="flex items-center gap-1.5 border-l border-slate-800 pl-3">
                  <span className={`w-1 h-1 rounded-full ${hwStatus === 'DETECTED' ? 'bg-cyan-500' : 'bg-slate-700'}`}></span>

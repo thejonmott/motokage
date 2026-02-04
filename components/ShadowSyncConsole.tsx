@@ -206,9 +206,9 @@ options:
         <div className="space-y-1 text-left">
           <h3 className="text-sm font-bold text-white uppercase tracking-widest flex items-center gap-2">
             <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
-            Global Uplink v15.9.2 "Gold Standard"
+            Cloud DNA Uplink
           </h3>
-          <p className="text-[10px] text-slate-500 font-mono uppercase tracking-widest">Secret Bound: motokage-api-key</p>
+          <p className="text-[10px] text-slate-500 font-mono uppercase tracking-widest">Single Source of Truth</p>
         </div>
         <div className="flex items-center gap-6">
           <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800">
@@ -219,10 +219,10 @@ options:
       </div>
 
       <div className="grid md:grid-cols-2 gap-8">
-        <div className="p-8 bg-slate-950 border border-emerald-500/30 rounded-3xl space-y-4 text-left">
-           <h4 className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">Identity Pipeline</h4>
+        <div className="p-8 bg-slate-950 border border-rose-500/30 rounded-3xl space-y-4 text-left">
+           <h4 className="text-[10px] font-bold text-rose-400 uppercase tracking-widest">Volatile RAM Warning</h4>
            <p className="text-[9px] text-slate-500 font-mono leading-relaxed">
-             This console pushes the current Motokage DNA directly to GitHub. Cloud Build then binds the <strong>Secret Manager</strong> key to the environment automatically.
+             This architecture is <strong>stateless</strong>. Any changes you have made in this session exist only in browser memory. You must <strong>Sync</strong> to persist them. Refreshing the page will revert to the last deployed Cloud Snapshot.
            </p>
         </div>
         <div className="p-8 bg-slate-950 border border-indigo-500/30 rounded-3xl space-y-4 text-left">
@@ -256,7 +256,7 @@ options:
       </div>
 
       <button onClick={handleAtomicSync} disabled={status.type === 'loading'} className={`w-full py-7 rounded-[2rem] font-bold text-[12px] uppercase tracking-[0.5em] transition-all shadow-2xl border group ${targetEnv === 'main' ? 'bg-purple-600 hover:bg-purple-700 border-purple-500/50' : 'bg-emerald-600 hover:bg-emerald-700 border-emerald-500/50'}`}>
-        {status.type === 'loading' ? 'TRANSMITTING IDENTITY...' : `UPLINK TO ${targetEnv.toUpperCase()}`}
+        {status.type === 'loading' ? 'TRANSMITTING IDENTITY...' : `COMMIT DNA TO ${targetEnv.toUpperCase()}`}
       </button>
 
       {status.msg && (
