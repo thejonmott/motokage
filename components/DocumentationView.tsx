@@ -11,18 +11,32 @@ const DocumentationView: React.FC = () => {
             <h1 className="text-6xl font-bold font-heading text-white tracking-tighter">
               The <span className="text-indigo-400 italic font-light">Recipe</span>
             </h1>
-            <p className="text-[10px] font-mono text-slate-500 uppercase tracking-[0.4em]">
-              Cognitive Legacy Specification • v15.9.2-HARDENED
-            </p>
+            <div className="flex flex-col gap-3">
+              <p className="text-[10px] font-mono text-slate-500 uppercase tracking-[0.4em]">
+                Cognitive Legacy Specification • v16.0.0-CLOUD-NATIVE
+              </p>
+              <a 
+                href="https://github.com/thejonmott/motokage" 
+                target="_blank" 
+                rel="noreferrer"
+                className="inline-flex items-center gap-2 text-[9px] font-bold text-slate-400 uppercase tracking-widest hover:text-white transition-colors group w-fit"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="opacity-70 group-hover:opacity-100">
+                  <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                </svg>
+                <span>View Source on GitHub</span>
+                <span className="opacity-0 -ml-2 group-hover:opacity-100 group-hover:ml-0 transition-all">→</span>
+              </a>
+            </div>
           </div>
           <div className="p-6 bg-slate-900 border border-slate-800 rounded-3xl space-y-2 text-left min-w-[300px] shadow-2xl">
             <div className="flex justify-between text-[8px] font-mono text-slate-500 uppercase tracking-widest">
               <span>Blueprint ID</span>
-              <span className="text-white">MOTOKAGE_REF_ARCH_A</span>
+              <span className="text-white">MOTOKAGE_REF_ARCH_B</span>
             </div>
             <div className="flex justify-between text-[8px] font-mono text-slate-500 uppercase tracking-widest">
               <span>Architecture</span>
-              <span className="text-indigo-400">Serverless Proxy</span>
+              <span className="text-indigo-400">Stateful Cloud Proxy</span>
             </div>
             <div className="flex justify-between text-[8px] font-mono text-slate-500 uppercase tracking-widest">
               <span>Identity ID</span>
@@ -38,7 +52,7 @@ const DocumentationView: React.FC = () => {
           <span className="text-slate-700 font-light">01.</span> Executive Summary
         </h3>
         <p className="text-lg text-slate-400 leading-relaxed font-light">
-          The Motokage framework is a production-grade architecture designed to scale human judgment via a "Digital Twin" cognitive service. This implementation utilizes a **Hardened Reference Architecture** that separates the user interface from the reasoning engine. By implementing a serverless proxy layer, the system ensures that identity-shaping instructions and API credentials remain isolated from the client-side environment.
+          The Motokage framework is a production-grade architecture designed to scale human judgment via a "Digital Twin" cognitive service. This updated implementation utilizes a **Stateful Cloud Architecture**. The system now decouples memory from the browser, using a dedicated **Google Cloud Storage** bucket to persist the twin's DNA (`shadow_config.json`) independently of the container lifecycle or user session.
         </p>
       </section>
 
@@ -53,7 +67,7 @@ const DocumentationView: React.FC = () => {
             { label: 'Secret Management', val: 'Google Secret Manager (In-Flight Resolution)', color: 'purple' },
             { label: 'Secure Proxy', val: 'Python 3.11 / Flask (Instruction Hardening)', color: 'indigo' },
             { label: 'Container Runtime', val: 'Google Cloud Run (Serverless Auto-scaling)', color: 'cyan' },
-            { label: 'State Management', val: 'GitHub (Identity-as-Code)', color: 'emerald' },
+            { label: 'Active Memory', val: 'Google Cloud Storage (Live JSON State)', color: 'emerald' },
           ].map((item, i) => (
             <div key={i} className="p-6 bg-slate-900/40 border border-slate-800 rounded-[2rem] space-y-3 transition-all hover:bg-slate-900 hover:border-slate-700">
               <div className={`text-[8px] font-bold uppercase tracking-widest text-${item.color}-400`}>{item.label}</div>
@@ -77,7 +91,7 @@ const DocumentationView: React.FC = () => {
             <div className="grid md:grid-cols-3 gap-6">
               {[
                 { t: 'Project Initialization', d: 'Establish dedicated project within GCP resource hierarchy.' },
-                { t: 'Service Enablement', d: 'Enable Cloud Run, Cloud Build, and Vertex AI APIs.' },
+                { t: 'Service Enablement', d: 'Enable Cloud Run, Cloud Build, Storage, and Vertex AI APIs.' },
                 { t: 'Registry Config', d: 'Provision Artifact Registry for container manifest storage.' },
               ].map((p, i) => (
                 <div key={i} className="space-y-2">
@@ -142,7 +156,26 @@ const DocumentationView: React.FC = () => {
           {/* Phase III */}
           <div className="relative pl-12 border-l border-slate-800 space-y-8">
             <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-slate-950 border-2 border-slate-700"></div>
-            <h4 className="text-lg font-bold text-white uppercase tracking-tight font-heading">Phase III: Logic Hardening (Secure Proxy)</h4>
+            <h4 className="text-lg font-bold text-white uppercase tracking-tight font-heading">Phase III: Persistent Memory (Cloud Storage)</h4>
+            <p className="text-sm text-slate-400 max-w-3xl leading-relaxed">Unlike stateless containers, the DNA must survive redeployments. We utilize a Google Cloud Storage bucket (`motokage-dna-storage`) as the single source of truth.</p>
+            <div className="grid md:grid-cols-3 gap-8">
+              {[
+                { t: 'DNA Hydration', d: 'On boot, the proxy checks the bucket for `shadow_config.json`. If found, it hydrates the state.' },
+                { t: 'Auto-Save Loop', d: 'Frontend changes trigger a debounced POST to the proxy, which writes directly to the GCS bucket.' },
+                { t: 'Immunity', d: 'The twin\'s memory is now immune to container recycles, browser clears, or new deployments.' },
+              ].map((p, i) => (
+                <div key={i} className="p-8 bg-slate-900/30 border border-slate-800 rounded-[2.5rem] space-y-4 hover:bg-slate-900 transition-all">
+                  <div className="text-[9px] font-bold text-white uppercase tracking-[0.3em]">{p.t}</div>
+                  <p className="text-[10px] text-slate-500 leading-relaxed uppercase font-mono tracking-wider">{p.d}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+          
+          {/* Phase IV */}
+          <div className="relative pl-12 border-l border-slate-800 space-y-8">
+            <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-slate-950 border-2 border-slate-700"></div>
+            <h4 className="text-lg font-bold text-white uppercase tracking-tight font-heading">Phase IV: Logic Hardening (Secure Proxy)</h4>
             <p className="text-sm text-slate-400 max-w-3xl leading-relaxed">The server-side proxy acts as the mandatory cognitive gatekeeper, preventing prompt injection and personality tampering.</p>
             <div className="grid md:grid-cols-3 gap-8">
               {[
@@ -224,7 +257,7 @@ const DocumentationView: React.FC = () => {
                <div className="flex items-center gap-3 text-[10px] font-mono text-slate-500 uppercase tracking-widest border-b border-slate-800 pb-2">
                  <span className="w-1.5 h-1.5 bg-purple-500 rounded-full"></span> Interface: Calibration / Evaluative
                </div>
-               <p className="text-sm text-slate-400 leading-relaxed">Requires Hardware Identity Handshake. Enables real-time heuristic calibration, artifact ingestion, and long-term memory maintenance.</p>
+               <p className="text-sm text-slate-400 leading-relaxed">Requires Hardware Identity Handshake. Enables real-time heuristic calibration and <strong>automatic syncing to Cloud Storage</strong>. Changes made here are persisted instantly to the cloud brain.</p>
             </div>
           </div>
         </div>
