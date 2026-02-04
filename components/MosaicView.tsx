@@ -1,7 +1,6 @@
 
 import React, { useState, useRef } from 'react';
 import { Persona, AccessLevel, MemoryShard } from '../types';
-import { GoogleGenAI } from "@google/genai";
 
 interface MosaicViewProps {
   persona: Persona;
@@ -15,7 +14,6 @@ const MosaicView: React.FC<MosaicViewProps> = ({ persona, setPersona, accessLeve
   const [artifactFile, setArtifactFile] = useState<{ data: string; mimeType: string } | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   
-  // Option 2: Recording State (Aural Shards)
   const [isRecordingEcho, setIsRecordingEcho] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -66,7 +64,7 @@ const MosaicView: React.FC<MosaicViewProps> = ({ persona, setPersona, accessLeve
       id: `echo_${Date.now()}`,
       category: 'echo',
       title: 'Aural Memory Capsule',
-      content: 'Voice recording stored in the cloud-native mosaic. Cadence and tone preserved.',
+      content: 'Voice recording stored in the cloud-native mosaic.',
       active: true,
       sensitivity: 'PUBLIC',
       audioData: base64Audio
@@ -76,35 +74,25 @@ const MosaicView: React.FC<MosaicViewProps> = ({ persona, setPersona, accessLeve
 
   const addShard = async () => {
     if (!newShard.title && !artifactFile) return;
-    
     setIsProcessing(true);
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-    
     try {
-      let content = newShard.content;
-      let title = newShard.title;
+      const response = await fetch('/api/synthesize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          content: newShard.content,
+          file: artifactFile
+        })
+      });
 
-      if (artifactFile) {
-        const response = await ai.models.generateContent({
-          model: 'gemini-3-flash-preview',
-          contents: {
-            parts: [
-              { inlineData: artifactFile },
-              { text: "Provide a high-fidelity summary of this document to be used as a memory shard in a digital twin's mosaic. Return a clear title and a concise but dense summary of the core artifacts/knowledge within. Return as JSON: { title: string, summary: string }" }
-            ]
-          },
-          config: { responseMimeType: "application/json" }
-        });
-        const data = JSON.parse(response.text || '{}');
-        title = data.title || title;
-        content = data.summary || content;
-      }
+      if (!response.ok) throw new Error("Synthesis failed");
+      const data = await response.json();
 
       const shard: MemoryShard = {
         id: `s_${Date.now()}`,
         category: 'axiom',
-        title: title || 'Unnamed Artifact',
-        content: content || 'No content extracted.',
+        title: data.title || newShard.title || 'Unnamed Artifact',
+        content: data.summary || newShard.content || 'No content extracted.',
         active: true,
         sensitivity: 'PUBLIC'
       };
@@ -115,7 +103,6 @@ const MosaicView: React.FC<MosaicViewProps> = ({ persona, setPersona, accessLeve
       setArtifactFile(null);
     } catch (err) {
       console.error("Artifact ingestion fail:", err);
-      alert("Artifact Analysis Failed: The digital twin could not synthesize this document.");
     } finally {
       setIsProcessing(false);
     }
@@ -163,31 +150,21 @@ const MosaicView: React.FC<MosaicViewProps> = ({ persona, setPersona, accessLeve
               <div className="space-y-6 flex flex-col">
                 <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Document Upload (PDF)</label>
                 <div className="flex-grow flex flex-col items-center justify-center border-2 border-dashed border-slate-800 rounded-2xl hover:border-indigo-500/50 transition-all p-10 relative group bg-slate-950/30">
-                  <input 
-                    type="file" 
-                    accept="application/pdf"
-                    onChange={handleFileChange}
-                    className="absolute inset-0 opacity-0 cursor-pointer"
-                  />
+                  <input type="file" accept="application/pdf" onChange={handleFileChange} className="absolute inset-0 opacity-0 cursor-pointer" />
                   <div className="text-center space-y-4 pointer-events-none">
                     <div className={`w-16 h-16 rounded-2xl mx-auto flex items-center justify-center transition-all ${artifactFile ? 'bg-indigo-600 text-white' : 'bg-slate-900 text-slate-600'}`}>
                       <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                     </div>
                     <div>
                       <p className="text-[10px] font-bold text-white uppercase tracking-widest">{artifactFile ? 'PDF Ready for Synthesis' : 'Upload Shard PDF'}</p>
-                      <p className="text-[8px] text-slate-500 font-mono mt-1">{artifactFile ? 'Content will be analyzed' : 'Drop or click to upload'}</p>
                     </div>
                   </div>
                 </div>
               </div>
            </div>
            <div className="flex gap-4">
-             <button 
-                onClick={addShard} 
-                disabled={isProcessing || (!newShard.title && !artifactFile)}
-                className="flex-grow bg-indigo-600 text-white py-5 rounded-2xl font-bold text-[10px] uppercase tracking-widest hover:bg-indigo-500 hover:scale-[1.01] transition-all disabled:opacity-50 shadow-lg"
-             >
-               {isProcessing ? 'Synthesizing Cognitive Artifact...' : 'Confirm Ingestion'}
+             <button onClick={addShard} disabled={isProcessing || (!newShard.title && !artifactFile)} className="flex-grow bg-indigo-600 text-white py-5 rounded-2xl font-bold text-[10px] uppercase tracking-widest hover:bg-indigo-500 transition-all disabled:opacity-50">
+               {isProcessing ? 'Synthesizing...' : 'Confirm Ingestion'}
              </button>
              <button onClick={() => { setIsAdding(false); setArtifactFile(null); }} className="px-10 py-5 bg-slate-950 text-slate-500 rounded-2xl text-[10px] font-bold uppercase tracking-widest">Cancel</button>
            </div>
@@ -207,7 +184,6 @@ const MosaicView: React.FC<MosaicViewProps> = ({ persona, setPersona, accessLeve
             </div>
             <h5 className="text-white text-sm font-bold mb-4 uppercase tracking-tight">{shard.title}</h5>
             <p className="text-[11px] text-slate-500 leading-relaxed font-mono uppercase tracking-wider line-clamp-6">{shard.content}</p>
-            <div className="mt-auto pt-6 border-t border-slate-900 text-[8px] font-mono text-slate-700 uppercase">Artifact_ID: {shard.id.slice(-8)}</div>
           </div>
         ))}
       </div>
