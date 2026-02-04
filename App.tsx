@@ -159,6 +159,10 @@ const App: React.FC = () => {
       return;
     }
 
+    if (!process.env.API_KEY || !hasKey) {
+      await handleOpenKeyPicker();
+    }
+
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       const inputCtx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
@@ -217,7 +221,12 @@ const App: React.FC = () => {
             }
           },
           onclose: () => setIsNeuralActive(false),
-          onerror: (e) => console.error(e)
+          onerror: (e) => {
+            console.error(e);
+            if (e.message?.includes("Requested entity was not found") || e.message?.includes("API Key")) {
+               handleOpenKeyPicker();
+            }
+          }
         },
         config: {
           responseModalities: [Modality.AUDIO],
@@ -242,8 +251,11 @@ const App: React.FC = () => {
 
       neuralSessionRef.current = await sessionPromise;
       setIsNeuralActive(true);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      if (err.message?.includes("API Key") || err.message?.includes("Requested entity was not found")) {
+        handleOpenKeyPicker();
+      }
     }
   };
 

@@ -1,7 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Persona, Message, AccessLevel } from '../types';
-// Fix: Import GoogleGenAI from the official SDK
 import { GoogleGenAI } from "@google/genai";
 
 interface ChatInterfaceProps {
@@ -25,12 +24,10 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
 
   const scrollToBottom = () => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); };
   
-  // Auto-scroll window to top on mount
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
-  // Only scroll to bottom on message updates, skipping the initial mount to keep the view at the top
   useEffect(() => { 
     if (isFirstRender.current) {
       isFirstRender.current = false;
@@ -52,6 +49,11 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
     const textToSend = query || input;
     if (!textToSend.trim() || isLoading) return;
 
+    // Check for API key presence and valid selection state
+    if (!process.env.API_KEY || !hasKey) {
+      await onConnectKey();
+    }
+
     const currentInput = textToSend;
     const userMessage: Message = { role: 'user', text: currentInput, timestamp: new Date() };
     
@@ -61,7 +63,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
     setActiveSubLog(accessLevel === 'CORE' ? 'Neural Sync Active...' : 'Uplinking to Proxy...');
 
     try {
-      // Fix: Create a new GoogleGenAI instance right before the call to ensure it always uses the most up-to-date API key.
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       
       const history = messages.map(m => ({
@@ -69,8 +70,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
         parts: [{ text: m.text }]
       }));
 
-      // DYNAMIC TEMPORAL GROUNDING
-      // We use the current real-world day/month but anchor the year to 2026 for the Studio theme.
       const now = new Date();
       const formattedDate = now.toLocaleDateString('en-US', { 
         weekday: 'long', 
@@ -93,7 +92,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
             ? "You are in Calibration Mode. Speak directly to your creator (Jon). You are aware of your 2026 temporal status and the exact current date. Provide deep strategic analysis and technical reasoning for this era."
             : "You are Jon's Digital Twin in 2026, presenting his professional judgment. Respond as a reflection of Jon's strategic thinking for the current year and date."}`;
 
-      // Fix: Use ai.models.generateContent directly in the frontend instead of fetch.
       const modelName = accessLevel === 'CORE' ? 'gemini-3-pro-preview' : 'gemini-3-flash-preview';
       const response = await ai.models.generateContent({
         model: modelName,
@@ -107,7 +105,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
         }
       });
 
-      // Fix: The text property directly returns the string output (do not use text()).
       const text = response.text;
 
       setMessages(prev => [...prev, { 
@@ -118,14 +115,14 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
     } catch (error: any) {
       console.error("Cognitive Uplink Failure:", error);
       
-      // Fix: If the request fails with "Requested entity was not found.", reset key selection state and prompt user to select a key again.
-      if (error.message?.includes("Requested entity was not found.")) {
+      const errorMessage = error.message || "";
+      if (errorMessage.includes("Requested entity was not found") || errorMessage.includes("API Key")) {
         onConnectKey();
       }
 
       setMessages(prev => [...prev, { 
         role: 'model', 
-        text: `[SYSTEM_ERROR]: ${error.message || "The cognitive bridge encountered an interruption."}`, 
+        text: `[SYSTEM_ERROR]: ${errorMessage || "The cognitive bridge encountered an interruption."}`, 
         timestamp: new Date() 
       }]);
     } finally {
