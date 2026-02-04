@@ -8,24 +8,23 @@ from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import google.generativeai as genai
 
-# Setup logging to see EVERYTHING in GCP Logs
+# Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__, static_folder='dist')
-CORS(app) # Crucial for local development
+CORS(app)
 
-# Configure Gemini
+# Configure Gemini - API Key is sourced server-side via Secret Manager in Cloud Run
 API_KEY = os.getenv('API_KEY') or os.getenv('GEMINI_API_KEY')
 if API_KEY:
-    logger.info("COGNITIVE_INFRASTRUCTURE: API_KEY detected and configured.")
+    logger.info("BRIDGE_STATUS: API_KEY detected. Initializing cognitive core.")
     genai.configure(api_key=API_KEY)
 else:
-    logger.error("CRITICAL_FAILURE: API_KEY is missing. Bridge will hang.")
+    logger.error("CRITICAL_FAILURE: API_KEY missing. Cognitive bridge will remain offline.")
 
 @app.route('/api/health', methods=['GET'])
 def health():
-    """Diagnostic endpoint to verify bridge integrity."""
     return jsonify({
         'status': 'nominal',
         'key_active': API_KEY is not None,
@@ -37,7 +36,7 @@ def health():
 def chat():
     try:
         if not API_KEY:
-            return jsonify({'error': 'Infrastructure Error: API Key not bound to service.'}), 500
+            return jsonify({'error': 'Cognitive bridge offline: API Key not bound.'}), 500
 
         data = request.json
         message = data.get('message')
@@ -45,35 +44,40 @@ def chat():
         system_instruction = data.get('systemInstruction', '')
         model_name = data.get('model', 'gemini-3-flash-preview')
 
-        logger.info(f"Synthesizing request for model {model_name}...")
+        logger.info(f"Synthesizing request via {model_name}...")
         
-        # We use the explicit model definition to ensure system instructions are baked in
+        # Robust Stateless Pattern: 
+        # We manually construct the conversation parts rather than relying on chat_session
+        # This prevents hanging during history synchronization in serverless workers.
         model = genai.GenerativeModel(
             model_name=model_name, 
             system_instruction=system_instruction
         )
         
-        # Reformulate history into the specific format expected by the Python SDK
-        # Format: [{'role': 'user', 'parts': ['text']}, {'role': 'model', 'parts': ['text']}]
-        chat_history = []
+        # Convert history to the format expected by the Python SDK
+        # parts must be a list of strings for standard chat history
+        formatted_contents = []
         for h in history:
             role = "user" if h['role'] == 'user' else "model"
-            text_part = h['parts'][0]['text'] if 'parts' in h and h['parts'] else ""
-            if text_part:
-                chat_history.append({"role": role, "parts": [text_part]})
+            text_val = h['parts'][0]['text'] if 'parts' in h and h['parts'] else ""
+            if text_val:
+                formatted_contents.append({"role": role, "parts": [text_val]})
         
-        # Use a timeout context if possible, or just standard SDK call
-        chat_session = model.start_chat(history=chat_history)
-        response = chat_session.send_message(message)
+        # Add the current message
+        formatted_contents.append({"role": "user", "parts": [message]})
+
+        # Execute generation
+        response = model.generate_content(formatted_contents)
         
-        if not response.candidates:
-            return jsonify({'text': '[SYSTEM_ALERT]: No response candidates generated. Safety filter may have triggered.'})
+        if not response.candidates or not response.candidates[0].content.parts:
+            logger.warning("Empty candidate response from model.")
+            return jsonify({'text': '[SYSTEM_ALERT]: No cognitive response generated. Content may have triggered a safety filter.'})
             
         return jsonify({'text': response.text})
 
     except Exception as e:
         logger.error(f"BRIDGE_EXECUTION_FAILURE: {str(e)}", exc_info=True)
-        return jsonify({'error': f"Cognitive bridge interrupted: {str(e)}"}), 500
+        return jsonify({'error': f"Inference Interrupted: {str(e)}"}), 500
 
 @app.route('/api/analyze-resume', methods=['POST'])
 def analyze_resume():
@@ -123,5 +127,4 @@ def serve(path):
     return send_from_directory(app.static_folder, 'index.html')
 
 if __name__ == '__main__':
-    # Local dev port 8080 matches the Vite proxy
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))
