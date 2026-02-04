@@ -52,9 +52,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
       const now = new Date();
       const formattedDate = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) + ", 2026";
       
-      // MEMORY FIX: Stringify the various DNA strands
       const historySummary = persona.originFacts.map(f => `[${f.year}-${f.month}] ${f.event}: ${f.significance}`).join('; ');
-      const relationsSummary = persona.relationships.map(r => `${r.name} (${r.type})`).join(', ');
+      const relationsSummary = persona.relationships.map(r => `${r.name} (${r.type}: ${r.memories})`).join(', ');
       const hobbiesSummary = persona.interests.hobbies.join(', ');
       const musicSummary = persona.interests.bands.map(b => `${b.name} (${b.meta})`).join(', ');
       const authorsSummary = persona.interests.authors.map(a => `${a.name} (Fav Books: ${a.meta})`).join(', ');
@@ -63,7 +62,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
       const systemInstruction = `
           IDENTITY: Motokage (Digital Twin of Jonathan Mott). 
           DEPLOYMENT_VERSION: v15.9.2-GOLD-LOCKED.
-          TEMPORAL_GROUNDING: Today is ${formattedDate}. You operate in 2026.
+          TEMPORAL_GROUNDING: Today is ${formattedDate}.
           MODE: ${accessLevel === 'CORE' ? 'PRIVATE CALIBRATION' : 'PUBLIC AMBASSADOR'}.
           
           CORE BIO: ${persona.bio}
@@ -72,16 +71,19 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
           TONE: ${persona.tone}.
 
           --- CONTEXTUAL MEMORY (DNA) ---
-          LIFE_HISTORY: ${historySummary || 'No history facts recorded yet.'}
+          LIFE_HISTORY: ${historySummary || 'No history recorded.'}
           RELATIONSHIPS: ${relationsSummary || 'No relationships documented.'}
           FAVORITES_INTERESTS:
             - HOBBIES: ${hobbiesSummary}
             - MUSIC/BANDS: ${musicSummary}
             - LITERATURE/AUTHORS: ${authorsSummary}
             - CINEMA/TV: ${moviesSummary}
-          --- END DNA ---`;
+          --- END DNA ---
+          
+          TASK: Respond to the user's prompt as Motokage. When appropriate, weave in details from your LIFE_HISTORY, RELATIONSHIPS, or FAVORITES to demonstrate high-fidelity presence. 
+          If in PUBLIC AMBASSADOR mode, maintain a professional, visionary, yet warm boundary.`;
 
-      const history = messages.map(m => ({
+      const chatHistory = messages.map(m => ({
         role: m.role,
         parts: [{ text: m.text }]
       }));
@@ -91,7 +93,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: currentInput,
-          history: history,
+          history: chatHistory,
           systemInstruction: systemInstruction,
           model: accessLevel === 'CORE' ? 'gemini-3-pro-preview' : 'gemini-3-flash-preview'
         }),
@@ -115,14 +117,13 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
       console.error("Uplink Failure:", error);
       setSyncStatus('error');
       let errMsg = `[SYSTEM_ERROR]: The cognitive bridge encountered an interruption. ${error.message}`;
-      if (error.name === 'AbortError') errMsg = "[SYSTEM_TIMEOUT]: The bridge took too long to resolve. Check Cloud Run logs for key prefix.";
+      if (error.name === 'AbortError') errMsg = "[SYSTEM_TIMEOUT]: The bridge took too long to resolve.";
       
       setMessages(prev => [...prev || [], { role: 'model', text: errMsg, timestamp: new Date() }]);
     } finally {
       clearTimeout(timeoutId);
       setIsLoading(false);
       setActiveSubLog('');
-      if (syncStatus === 'calibrating') setSyncStatus('nominal');
       scrollToBottom();
     }
   };
