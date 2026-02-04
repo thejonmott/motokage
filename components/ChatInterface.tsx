@@ -1,7 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Persona, Message, AccessLevel } from '../types';
-import { GoogleGenAI } from "@google/genai";
 
 interface ChatInterfaceProps {
   persona: Persona;
@@ -20,19 +19,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
   const isFirstRender = useRef(true);
 
   const scrollToBottom = () => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); };
-
-  // Diagnostic: Monitor system readiness
-  useEffect(() => {
-    const checkInfrastructure = () => {
-      if (!process.env.API_KEY) {
-        console.warn("SYSTEM_ADVISORY: API_KEY environment variable not detected in browser context.");
-        setSyncStatus('error');
-      } else {
-        setSyncStatus('nominal');
-      }
-    };
-    checkInfrastructure();
-  }, []);
 
   useEffect(() => { 
     if (isFirstRender.current) {
@@ -55,20 +41,15 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
     setInput('');
     setIsLoading(true);
     setSyncStatus('calibrating');
-    setActiveSubLog(accessLevel === 'CORE' ? 'Neural Sync Active...' : 'Uplinking to Gemini...');
+    setActiveSubLog(accessLevel === 'CORE' ? 'Neural Sync Active...' : 'Uplinking to Proxy...');
 
-    // CIRCUIT BREAKER: Force a hard timeout for UI responsiveness
+    // CIRCUIT BREAKER: Hard 25s timeout to prevent infinite spinning
     const controller = new AbortController();
     const timeoutId = setTimeout(() => {
-      if (isLoading) controller.abort();
-    }, 28000);
+      try { controller.abort(); } catch (e) {}
+    }, 25000);
 
     try {
-      if (!process.env.API_KEY) throw new Error("API_KEY_NOT_BOUND");
-
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      const modelId = accessLevel === 'CORE' ? 'gemini-3-pro-preview' : 'gemini-3-flash-preview';
-      
       const now = new Date();
       const formattedDate = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) + ", 2026";
       
@@ -80,45 +61,54 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
           CORE BIO: ${persona.bio}
           STRATEGIC MANDATES: ${persona.mandates.map(m => m.title).join(', ')}.
           REASONING LOGIC: ${persona.reasoningLogic}.
-          TONE: ${persona.tone}.
-          INSTRUCTION: Provide strategic, high-fidelity responses. If user intent is unclear, ask for clarification within the persona's tone.`;
+          TONE: ${persona.tone}.`;
 
       const history = messages.map(m => ({
         role: m.role,
         parts: [{ text: m.text }]
       }));
 
-      const response = await ai.models.generateContent({
-        model: modelId,
-        contents: [...history, { role: 'user', parts: [{ text: currentInput }] }],
-        config: {
+      // Fallback logic for Cloud Run relative vs absolute resolution
+      const endpoint = '/api/chat';
+      
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: currentInput,
+          history: history,
           systemInstruction: systemInstruction,
-          temperature: 0.7,
-          topK: 40,
-          topP: 0.95,
-        }
+          model: accessLevel === 'CORE' ? 'gemini-3-pro-preview' : 'gemini-3-flash-preview'
+        }),
+        signal: controller.signal
       });
 
-      const responseText = response.text;
-      
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || `HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
       setMessages(prev => [...prev, { 
         role: 'model', 
-        text: responseText || "[SYSTEM_ALERT]: Empty response buffer received.", 
+        text: data.text || "Empty response buffer.", 
         timestamp: new Date() 
       }]);
       setSyncStatus('nominal');
 
     } catch (error: any) {
-      console.error("Cognitive Uplink Failure:", error);
+      console.error("Uplink Failure:", error);
       setSyncStatus('error');
       let errMsg = `[SYSTEM_ERROR]: The cognitive bridge encountered an interruption. ${error.message}`;
-      if (error.name === 'AbortError') errMsg = "[SYSTEM_TIMEOUT]: The direct uplink took too long to resolve. Check your network or project quotas.";
+      if (error.name === 'AbortError') errMsg = "[SYSTEM_TIMEOUT]: The bridge took too long to resolve. Check Cloud Run logs for key prefix.";
       
-      setMessages(prev => [...prev, { role: 'model', text: errMsg, timestamp: new Date() }]);
+      setMessages(prev => [...prev || [], { role: 'model', text: errMsg, timestamp: new Date() }]);
     } finally {
+      // CLEAR ALL STATE - No scenario allows it to stay spinning
       clearTimeout(timeoutId);
       setIsLoading(false);
       setActiveSubLog('');
+      if (syncStatus === 'calibrating') setSyncStatus('nominal');
       scrollToBottom();
     }
   };
@@ -156,7 +146,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
   return (
     <div className="flex flex-col lg:flex-row gap-8 max-w-7xl mx-auto h-[85vh] animate-in fade-in duration-700">
       <div className="w-full lg:w-80 shrink-0 space-y-6 text-left">
-        <div className={`relative group p-8 bg-slate-900 border rounded-[2.5rem] overflow-hidden shadow-2xl transition-all ${accessLevel === 'CORE' ? 'border-purple-500/50' : 'border-slate-800'}`}>
+        {/* TILT RESTORED: rotate-3 added back to the container */}
+        <div className={`relative group p-8 bg-slate-900 border rounded-[2.5rem] overflow-hidden shadow-2xl transition-all rotate-3 ${accessLevel === 'CORE' ? 'border-purple-500/50' : 'border-slate-800'}`}>
           {isLoading && (
             <div className="absolute inset-0 pointer-events-none overflow-hidden z-20">
               <div className={`w-full h-1 shadow-[0_0_15px] absolute top-0 animate-[scan_2s_linear_infinite] ${accessLevel === 'CORE' ? 'bg-purple-500 shadow-purple-500' : 'bg-indigo-500 shadow-indigo-500'}`}></div>
@@ -174,7 +165,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
 
         <div className="bg-slate-900/50 border border-slate-800 rounded-3xl p-6 text-left">
           <p className="text-[10px] text-slate-400 font-mono uppercase tracking-widest leading-relaxed">
-            {accessLevel === 'CORE' ? "Neural sync locked. Direct cognitive uplink operational." : "Ambassador interface active. Secure direct synthesis mode initialized."}
+            {accessLevel === 'CORE' ? "Neural sync locked. Ready for high-fidelity calibration." : "Ambassador interface active. Professional reflection mode operational."}
           </p>
         </div>
       </div>
@@ -195,7 +186,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
             <div className="h-full flex flex-col items-center justify-center text-center space-y-10 py-10">
               <div className="space-y-4">
                 <h4 className="text-sm font-bold text-white uppercase tracking-[0.4em]">Uplink Ready</h4>
-                <p className="text-[10px] text-slate-500 font-mono uppercase tracking-widest max-w-xs mx-auto">Direct SDK bridge established. Cognitive responses optimized for latency.</p>
+                <p className="text-[10px] text-slate-500 font-mono uppercase tracking-widest max-w-xs mx-auto">Infrastructure locked. Direct cognitive access established.</p>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-2xl">
                 {QUICK_DIRECTIVES.map((d, i) => (

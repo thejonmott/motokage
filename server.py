@@ -16,16 +16,16 @@ app = Flask(__name__, static_folder='dist')
 CORS(app)
 
 # Configure Gemini - API Key is sourced server-side via Secret Manager in Cloud Run
-# Cloud Assist Recommendation: Explicitly log key presence
 API_KEY = os.getenv('API_KEY') or os.getenv('GEMINI_API_KEY')
 
+# Cloud Assist Recommendation: Diagnostic logging for key verification
 if API_KEY:
-    # Diagnostic logging: confirms the key is found and shows the first few chars for validation
+    # confirms the key is found and shows the first few chars for validation
     prefix = API_KEY[:6] if len(API_KEY) > 6 else "SHORT"
     logger.info(f"BRIDGE_STATUS: API_KEY detected (Prefix: {prefix}...). Initializing cognitive core.")
     genai.configure(api_key=API_KEY)
 else:
-    logger.error("CRITICAL_FAILURE: API_KEY missing. Ensure 'motokage-api-key' is correctly bound to 'API_KEY' in Cloud Run.")
+    logger.error("CRITICAL_FAILURE: API_KEY missing. Check Secret Manager binding in Cloud Run.")
 
 @app.route('/api/health', methods=['GET'])
 def health():
@@ -33,16 +33,14 @@ def health():
         'status': 'nominal',
         'key_active': API_KEY is not None,
         'key_prefix': API_KEY[:4] if API_KEY else None,
-        'timestamp': time.time(),
-        'version': 'v15.9.2-GOLD-LOCKED'
+        'timestamp': time.time()
     })
 
 @app.route('/api/chat', methods=['POST'])
 def chat():
-    """Fallback proxy for legacy systems or secure instruction injection."""
     try:
         if not API_KEY:
-            return jsonify({'error': 'Cognitive bridge offline: API Key not bound.'}), 500
+            return jsonify({'error': 'Cognitive bridge offline: API Key not found in environment.'}), 500
 
         data = request.json
         message = data.get('message')
@@ -71,7 +69,7 @@ def chat():
         return jsonify({'text': response.text})
 
     except Exception as e:
-        logger.error(f"BRIDGE_EXECUTION_FAILURE: {str(e)}", exc_info=True)
+        logger.error(f"BRIDGE_FAILURE: {str(e)}", exc_info=True)
         return jsonify({'error': f"Inference Interrupted: {str(e)}"}), 500
 
 @app.route('/api/analyze-resume', methods=['POST'])
@@ -86,7 +84,7 @@ def analyze_resume():
             parts.append({'mime_type': file_data['mimeType'], 'data': base64.b64decode(file_data['data'])})
         if text_content:
             parts.append(text_content)
-        prompt = "Analyze resume for DNA updates (bio, coreValues, tone). Return JSON."
+        prompt = "Analyze resume for DNA updates. Return JSON."
         model = genai.GenerativeModel('gemini-3-flash-preview')
         response = model.generate_content([prompt] + parts, generation_config={"response_mime_type": "application/json"})
         return jsonify(json.loads(response.text))
