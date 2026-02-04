@@ -34,7 +34,10 @@ const INITIAL_PERSONA: Persona = {
   originFacts: [
     { 
       id: 'o1', 
-      date: 'January 1, 2020', 
+      date: '2020-01-01', 
+      month: 'January',
+      day: '1',
+      year: '2020',
       event: 'Founded Motokage Studio', 
       significance: 'Established the identity framework for high-fidelity digital twins.', 
       category: 'CAREER',
@@ -45,12 +48,10 @@ const INITIAL_PERSONA: Persona = {
   relationships: [],
   interests: {
     hobbies: ['AI Architecture', 'Sailing', 'Analog Photography'],
-    music: ['Massive Attack', 'Brian Eno', 'Max Richter'],
+    bands: [],
     authors: [],
     movies: [],
-    foods: [],
     philosophy: ['Stay hungry, stay foolish'],
-    other: []
   },
   accessLevel: 'AMBASSADOR'
 };
@@ -65,6 +66,10 @@ const App: React.FC = () => {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
+        // Migration check for old interest format
+        if (Array.isArray(parsed.interests?.music)) {
+          parsed.interests.bands = parsed.interests.music.map((m: string) => ({ id: Math.random().toString(), name: m }));
+        }
         return { ...INITIAL_PERSONA, ...parsed };
       } catch (e) {
         return INITIAL_PERSONA;
@@ -74,8 +79,6 @@ const App: React.FC = () => {
   });
 
   const [messages, setMessages] = useState<Message[]>([]);
-
-  // Neural Link (Voice Mode) states - Refactored to backend proxy
   const [isNeuralActive, setIsNeuralActive] = useState(false);
 
   useEffect(() => {
@@ -88,13 +91,7 @@ const App: React.FC = () => {
   };
 
   const toggleNeuralLink = async () => {
-    if (isNeuralActive) {
-      setIsNeuralActive(false);
-      return;
-    }
-    // Placeholder for actual WebRTC/Audio streaming to the bridge if implemented later
-    // For now, this acts as a UI toggle for the voice focus mode
-    setIsNeuralActive(true);
+    setIsNeuralActive(!isNeuralActive);
   };
 
   return (
@@ -120,7 +117,6 @@ const App: React.FC = () => {
         </div>
       </main>
 
-      {/* Floating Neural Link Orb */}
       {accessLevel === 'CORE' && (
         <div className="fixed bottom-12 right-12 z-[100] group">
           <button 
@@ -133,7 +129,7 @@ const App: React.FC = () => {
                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-white z-10"><path d="M12 2a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
               </div>
             ) : (
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-purple-400 group-hover:text-white transition-colors"><path d="M12 2a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-purple-400 group-hover:text-white transition-colors"><path d="M12 2a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V5a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
             )}
           </button>
           <div className="absolute bottom-full right-0 mb-4 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-900 border border-purple-500/30 px-4 py-2 rounded-xl text-[9px] font-bold text-purple-400 uppercase tracking-widest whitespace-nowrap">

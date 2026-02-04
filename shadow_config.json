@@ -37,7 +37,10 @@
   "originFacts": [
     {
       "id": "o1",
-      "date": "January 1, 2020",
+      "date": "2020-01-01",
+      "month": "January",
+      "day": "1",
+      "year": "2020",
       "event": "Founded Motokage Studio",
       "significance": "Established the identity framework for high-fidelity digital twins.",
       "category": "CAREER",
@@ -52,18 +55,12 @@
       "Sailing",
       "Analog Photography"
     ],
-    "music": [
-      "Massive Attack",
-      "Brian Eno",
-      "Max Richter"
-    ],
+    "bands": [],
     "authors": [],
     "movies": [],
-    "foods": [],
     "philosophy": [
       "Stay hungry, stay foolish"
-    ],
-    "other": []
+    ]
   },
   "accessLevel": "AMBASSADOR"
 }

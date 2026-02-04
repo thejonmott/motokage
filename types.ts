@@ -45,7 +45,10 @@ export interface Mandate {
 
 export interface OriginFact {
   id: string;
-  date: string; 
+  date: string; // ISO or human readable
+  day?: string;
+  month?: string;
+  year: string;
   event: string;
   significance: string;
   details?: string;
@@ -55,13 +58,20 @@ export interface OriginFact {
 
 export interface Relationship {
   id: string;
-  type: 'SPOUSE' | 'CHILD' | 'GRANDCHILD' | 'PET' | 'PARENT' | 'OTHER';
+  type: 'SPOUSE' | 'CHILD' | 'FRIEND' | 'PET' | 'PARENT' | 'OTHER';
   name: string;
   birthDate?: string;
   marriageDate?: string;
   place?: string;
   memories?: string;
   details?: string;
+}
+
+export interface InterestItem {
+  id: string;
+  name: string;
+  notes?: string;
+  meta?: string; // e.g. "Favorite Albums: X, Y" or "Why: Reason"
 }
 
 export interface Persona {
@@ -77,14 +87,12 @@ export interface Persona {
   relationships: Relationship[];
   interests: {
     hobbies: string[];
-    music: string[];
-    authors: string[];
-    movies: string[];
-    foods: string[];
+    bands: InterestItem[];
+    authors: InterestItem[];
+    movies: InterestItem[];
     philosophy: string[];
-    other: string[];
   };
-  vocalSignature?: string[]; // Array of base64 audio samples
+  vocalSignature?: string[]; 
   accessLevel: AccessLevel;
 }
 
