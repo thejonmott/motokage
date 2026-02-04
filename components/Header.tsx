@@ -8,7 +8,7 @@ interface HeaderProps {
   accessLevel: AccessLevel;
   setAccessLevel: (level: AccessLevel) => void;
   hasKey: boolean;
-  syncStatus?: 'idle' | 'detected' | 'failed';
+  syncStatus?: 'idle' | 'detected' | 'failed' | 'saving' | 'saved';
 }
 
 const Icons = {
@@ -103,9 +103,9 @@ const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, accessLevel, s
             </div>
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-1.5">
-                <span className={`w-1 h-1 rounded-full animate-pulse ${syncStatus === 'detected' ? 'bg-emerald-500' : 'bg-amber-500'}`}></span>
+                <span className={`w-1 h-1 rounded-full animate-pulse ${syncStatus === 'saving' ? 'bg-indigo-500' : (syncStatus === 'detected' || syncStatus === 'saved' ? 'bg-emerald-500' : 'bg-amber-500')}`}></span>
                 <span className="text-[7px] font-mono text-slate-500 tracking-widest uppercase">
-                  SOURCE: {syncStatus === 'detected' ? 'CLOUD' : 'FACTORY'}
+                  SOURCE: {syncStatus === 'saving' ? 'WRITING...' : (syncStatus === 'detected' || syncStatus === 'saved' ? 'CLOUD (GCS)' : 'FACTORY')}
                 </span>
               </div>
               <div className="flex items-center gap-1.5 border-l border-slate-800 pl-3">

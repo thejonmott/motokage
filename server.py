@@ -7,6 +7,7 @@ import time
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import google.generativeai as genai
+from google.cloud import storage
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -17,6 +18,18 @@ CORS(app)
 
 # Configure Gemini - API Key is sourced server-side via Secret Manager in Cloud Run
 API_KEY = os.getenv('API_KEY') or os.getenv('GEMINI_API_KEY')
+
+# GCS Persistence Configuration
+# You must create this bucket in GCP or set the env var to an existing bucket
+DNA_BUCKET_NAME = os.getenv('DNA_BUCKET', 'motokage-dna-storage')
+DNA_FILENAME = 'shadow_config.json'
+
+storage_client = None
+try:
+    storage_client = storage.Client()
+    logger.info(f"STORAGE_STATUS: Connected to GCS. Target Bucket: {DNA_BUCKET_NAME}")
+except Exception as e:
+    logger.error(f"STORAGE_ERROR: Could not init GCS client. Persistence will fail. {e}")
 
 # Cloud Assist Recommendation: Diagnostic logging for key verification
 if API_KEY:
@@ -33,19 +46,67 @@ def health():
         'status': 'nominal',
         'key_active': API_KEY is not None,
         'key_prefix': API_KEY[:4] if API_KEY else None,
+        'persistence_mode': 'GCS' if storage_client else 'EPHEMERAL',
         'timestamp': time.time()
     })
 
 @app.route('/shadow_config.json')
 def serve_shadow_config():
-    """Serves the persisted Persona DNA if it exists in the container image."""
+    """
+    Serves the persisted Persona DNA.
+    Priority 1: Google Cloud Storage (The Truth)
+    Priority 2: Local Container File (The Factory Default)
+    """
+    # 1. Try GCS
+    if storage_client:
+        try:
+            bucket = storage_client.bucket(DNA_BUCKET_NAME)
+            blob = bucket.blob(DNA_FILENAME)
+            if blob.exists():
+                logger.info("DNA_FETCH: Serving from GCS Bucket.")
+                content = blob.download_as_text()
+                return jsonify(json.loads(content))
+        except Exception as e:
+            logger.warning(f"DNA_FETCH_GCS_FAIL: {e}. Falling back to local.")
+
+    # 2. Fallback to Local
     try:
         if os.path.exists('shadow_config.json'):
+            logger.info("DNA_FETCH: Serving from Local Container.")
             return send_from_directory('.', 'shadow_config.json')
         return jsonify({}), 404
     except Exception as e:
         logger.error(f"CONFIG_SERVE_FAIL: {str(e)}")
         return jsonify({}), 404
+
+@app.route('/api/save_dna', methods=['POST'])
+def save_dna():
+    """Writes the Persona DNA directly to Google Cloud Storage."""
+    if not storage_client:
+        return jsonify({'error': 'Storage subsystem unavailable. Cannot persist.'}), 503
+    
+    try:
+        data = request.json
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+
+        bucket = storage_client.bucket(DNA_BUCKET_NAME)
+        # Check if bucket exists, if not, try to create (requires admin perms)
+        if not bucket.exists():
+            try:
+                bucket.create(location="US")
+            except Exception as e:
+                return jsonify({'error': f'Bucket {DNA_BUCKET_NAME} not found and cannot be created: {str(e)}'}), 500
+
+        blob = bucket.blob(DNA_FILENAME)
+        blob.upload_from_string(json.dumps(data, indent=2), content_type='application/json')
+        
+        logger.info("DNA_SAVE: Successfully wrote to GCS.")
+        return jsonify({'status': 'success', 'location': f'gs://{DNA_BUCKET_NAME}/{DNA_FILENAME}'})
+
+    except Exception as e:
+        logger.error(f"DNA_SAVE_FAIL: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/chat', methods=['POST'])
 def chat():
