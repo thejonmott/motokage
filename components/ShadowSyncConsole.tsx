@@ -219,10 +219,15 @@ options:
       </div>
 
       <div className="grid md:grid-cols-2 gap-8">
-        <div className="p-8 bg-slate-950 border border-rose-500/30 rounded-3xl space-y-4 text-left">
-           <h4 className="text-[10px] font-bold text-rose-400 uppercase tracking-widest">Volatile RAM Warning</h4>
+        <div className="p-8 bg-slate-950 border border-emerald-500/30 rounded-3xl space-y-4 text-left">
+           <h4 className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest flex items-center gap-2">
+             <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
+             Active Persistence: GCS
+           </h4>
            <p className="text-[9px] text-slate-500 font-mono leading-relaxed">
-             This architecture is <strong>stateless</strong>. Any changes you have made in this session exist only in browser memory. You must <strong>Sync</strong> to persist them. Refreshing the page will revert to the last deployed Cloud Snapshot.
+             Your "Digital Twin" state is now <strong>automatically saved</strong> to Google Cloud Storage. 
+             <br/><br/>
+             Use the console below to <strong>Commit</strong> this active state to GitHub for version history and redeployment resilience.
            </p>
         </div>
         <div className="p-8 bg-slate-950 border border-indigo-500/30 rounded-3xl space-y-4 text-left">

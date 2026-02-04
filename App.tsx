@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { TabType, Persona, Message, AccessLevel, OriginFact } from './types';
 import Header from './components/Header';
@@ -10,9 +9,6 @@ import MandatesView from './components/MandatesView';
 import OriginStoryView from './components/OriginStoryView';
 import DashboardView from './components/DashboardView';
 import DocumentationView from './components/DocumentationView';
-
-// ARCHITECTURE CHANGE: Local Storage key removed. 
-// Data is now volatile RAM until synced to Cloud.
 
 const INITIAL_PERSONA: Persona = {
   name: '元影 (Motokage)',
@@ -61,18 +57,13 @@ const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>(TabType.STRATEGY);
   const [accessLevel, setAccessLevel] = useState<AccessLevel>('AMBASSADOR');
   const [hasKey, setHasKey] = useState<boolean>(true);
-  const [cloudSyncStatus, setCloudSyncStatus] = useState<'idle' | 'detected' | 'failed'>('idle');
-  
-  // STATE ARCHITECTURE:
-  // 1. Initialize with Factory Defaults (INITIAL_PERSONA).
-  // 2. Attempt to hydrate from Cloud (shadow_config.json).
-  // 3. No local persistence. Browser refresh = Reset to Cloud State.
+  const [cloudSyncStatus, setCloudSyncStatus] = useState<'idle' | 'detected' | 'failed' | 'saving' | 'saved'>('idle');
   const [persona, setPersona] = useState<Persona>(INITIAL_PERSONA);
-
   const [messages, setMessages] = useState<Message[]>([]);
   const [isNeuralActive, setIsNeuralActive] = useState(false);
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Cloud Hydration: Fetch the deployed configuration from the container
+  // 1. Initial Hydration from GCS (via Proxy)
   useEffect(() => {
     fetch('/shadow_config.json')
       .then(res => {
@@ -81,17 +72,52 @@ const App: React.FC = () => {
       })
       .then(data => {
         if (data && data.name) {
-          console.log("[Motokage System]: Cloud DNA Detected. Hydrating...");
-          // Merge with initial to ensure schema compatibility if new fields were added
+          console.log("[Motokage System]: GCS DNA Detected. Hydrating...");
           setPersona(prev => ({ ...prev, ...data }));
           setCloudSyncStatus('detected');
         }
       })
       .catch(() => {
-        console.log("[Motokage System]: Cloud DNA not found. Running on Factory Default.");
+        console.log("[Motokage System]: GCS DNA not found. Running on Factory Default.");
         setCloudSyncStatus('failed');
       });
   }, []);
+
+  // 2. Auto-Save to GCS (Debounced)
+  useEffect(() => {
+    // Only auto-save if we are already synced/saved (avoid overwriting cloud with factory default on first load)
+    // OR if user is in CORE mode (implies they are editing)
+    if (cloudSyncStatus === 'idle') return; 
+
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+
+    setCloudSyncStatus('saving');
+    
+    saveTimeoutRef.current = setTimeout(async () => {
+      try {
+        const response = await fetch('/api/save_dna', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(persona)
+        });
+        
+        if (response.ok) {
+           setCloudSyncStatus('saved');
+           console.log("[Motokage System]: DNA Persisted to GCS.");
+        } else {
+           setCloudSyncStatus('failed');
+           console.error("[Motokage System]: Save Failed.");
+        }
+      } catch (e) {
+        console.error("Save Error", e);
+        setCloudSyncStatus('failed');
+      }
+    }, 2000); // 2 second debounce
+
+    return () => {
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    };
+  }, [persona]);
 
   const handleLevelChange = (newLevel: AccessLevel) => {
     if (newLevel === 'AMBASSADOR') setActiveTab(TabType.STRATEGY);
@@ -127,10 +153,16 @@ const App: React.FC = () => {
       </main>
 
       {/* Cloud Sync Indicator Toast */}
-      {cloudSyncStatus === 'detected' && (
-        <div className="fixed top-24 right-8 z-40 bg-emerald-500/10 border border-emerald-500/20 px-4 py-2 rounded-xl flex items-center gap-3 animate-in slide-in-from-right-10 fade-out duration-1000 delay-[5000ms] fill-mode-forwards">
-           <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
-           <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-widest">Cloud DNA Hydrated</span>
+      {cloudSyncStatus === 'saved' && (
+        <div className="fixed top-24 right-8 z-40 bg-emerald-500/10 border border-emerald-500/20 px-4 py-2 rounded-xl flex items-center gap-3 animate-in slide-in-from-right-10 fade-out duration-1000 delay-[2000ms] fill-mode-forwards">
+           <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
+           <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-widest">DNA Saved to Cloud</span>
+        </div>
+      )}
+       {cloudSyncStatus === 'saving' && (
+        <div className="fixed top-24 right-8 z-40 bg-indigo-500/10 border border-indigo-500/20 px-4 py-2 rounded-xl flex items-center gap-3 animate-in slide-in-from-right-10">
+           <div className="w-2 h-2 bg-indigo-500 rounded-full animate-ping"></div>
+           <span className="text-[9px] font-bold text-indigo-400 uppercase tracking-widest">Syncing to Storage...</span>
         </div>
       )}
 
@@ -146,7 +178,7 @@ const App: React.FC = () => {
                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-white z-10"><path d="M12 2a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
               </div>
             ) : (
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-purple-400 group-hover:text-white transition-colors"><path d="M12 2a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-purple-400 group-hover:text-white transition-colors"><path d="M12 2a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V5a3 3 0 0 0-6 0V5a3 3 0 0 0 3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
             )}
           </button>
           <div className="absolute bottom-full right-0 mb-4 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-900 border border-purple-500/30 px-4 py-2 rounded-xl text-[9px] font-bold text-purple-400 uppercase tracking-widest whitespace-nowrap">
