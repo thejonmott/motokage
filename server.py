@@ -36,6 +36,17 @@ def health():
         'timestamp': time.time()
     })
 
+@app.route('/shadow_config.json')
+def serve_shadow_config():
+    """Serves the persisted Persona DNA if it exists in the container image."""
+    try:
+        if os.path.exists('shadow_config.json'):
+            return send_from_directory('.', 'shadow_config.json')
+        return jsonify({}), 404
+    except Exception as e:
+        logger.error(f"CONFIG_SERVE_FAIL: {str(e)}")
+        return jsonify({}), 404
+
 @app.route('/api/chat', methods=['POST'])
 def chat():
     try:
