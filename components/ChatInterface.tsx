@@ -9,12 +9,9 @@ interface ChatInterfaceProps {
   messages: Message[];
   setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
   accessLevel: AccessLevel;
-  hasKey: boolean;
-  onConnectKey: () => void;
-  onResetKey: () => void;
 }
 
-const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, messages, setMessages, accessLevel, hasKey, onConnectKey, onResetKey }) => {
+const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, messages, setMessages, accessLevel }) => {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isVerifyingLink, setIsVerifyingLink] = useState(true);
@@ -48,11 +45,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
   const handleSend = async (query?: string) => {
     const textToSend = query || input;
     if (!textToSend.trim() || isLoading) return;
-
-    // Check for API key presence and valid selection state
-    if (!process.env.API_KEY || !hasKey) {
-      await onConnectKey();
-    }
 
     const currentInput = textToSend;
     const userMessage: Message = { role: 'user', text: currentInput, timestamp: new Date() };
@@ -115,14 +107,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
     } catch (error: any) {
       console.error("Cognitive Uplink Failure:", error);
       
-      const errorMessage = error.message || "";
-      if (errorMessage.includes("Requested entity was not found") || errorMessage.includes("API Key")) {
-        onConnectKey();
-      }
-
       setMessages(prev => [...prev, { 
         role: 'model', 
-        text: `[SYSTEM_ERROR]: ${errorMessage || "The cognitive bridge encountered an interruption."}`, 
+        text: `[SYSTEM_ERROR]: ${error.message || "The cognitive bridge encountered an interruption."}`, 
         timestamp: new Date() 
       }]);
     } finally {

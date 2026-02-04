@@ -92,7 +92,7 @@ async function decodeAudioData(data: Uint8Array, ctx: AudioContext, sampleRate: 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>(TabType.STRATEGY);
   const [accessLevel, setAccessLevel] = useState<AccessLevel>('AMBASSADOR');
-  const [hasKey, setHasKey] = useState<boolean>(false);
+  const [hasKey, setHasKey] = useState<boolean>(true); // Assuming external injection as per instructions
   
   const [persona, setPersona] = useState<Persona>(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
@@ -116,33 +116,6 @@ const App: React.FC = () => {
   const neuralAudioCtxRef = useRef<{ input: AudioContext; output: AudioContext } | null>(null);
 
   useEffect(() => {
-    const checkKeyStatus = async () => {
-      if (window.aistudio && typeof window.aistudio.hasSelectedApiKey === 'function') {
-        const selected = await window.aistudio.hasSelectedApiKey();
-        setHasKey(selected);
-      } else {
-        setHasKey(true);
-      }
-    };
-    checkKeyStatus();
-  }, [accessLevel]);
-
-  const handleOpenKeyPicker = async () => {
-    try {
-      if (window.aistudio && typeof window.aistudio.openSelectKey === 'function') {
-        await window.aistudio.openSelectKey();
-        setHasKey(true);
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const handleResetKey = () => {
-    handleOpenKeyPicker();
-  };
-
-  useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(persona));
   }, [persona]);
 
@@ -157,10 +130,6 @@ const App: React.FC = () => {
       if (neuralSessionRef.current) neuralSessionRef.current.close();
       setIsNeuralActive(false);
       return;
-    }
-
-    if (!process.env.API_KEY || !hasKey) {
-      await handleOpenKeyPicker();
     }
 
     try {
@@ -223,9 +192,6 @@ const App: React.FC = () => {
           onclose: () => setIsNeuralActive(false),
           onerror: (e) => {
             console.error(e);
-            if (e.message?.includes("Requested entity was not found") || e.message?.includes("API Key")) {
-               handleOpenKeyPicker();
-            }
           }
         },
         config: {
@@ -253,9 +219,6 @@ const App: React.FC = () => {
       setIsNeuralActive(true);
     } catch (err: any) {
       console.error(err);
-      if (err.message?.includes("API Key") || err.message?.includes("Requested entity was not found")) {
-        handleOpenKeyPicker();
-      }
     }
   };
 
@@ -277,7 +240,7 @@ const App: React.FC = () => {
           {activeTab === TabType.MOSAIC && <MosaicView persona={persona} setPersona={setPersona} accessLevel={accessLevel} />}
           {activeTab === TabType.DNA && <DNAView persona={persona} setPersona={setPersona} accessLevel={accessLevel} />}
           {activeTab === TabType.MANDATES && <MandatesView persona={persona} setPersona={setPersona} accessLevel={accessLevel} />}
-          {activeTab === TabType.SELF && <ChatInterface persona={persona} setPersona={setPersona} messages={messages} setMessages={setMessages} accessLevel={accessLevel} hasKey={hasKey} onConnectKey={handleOpenKeyPicker} onResetKey={handleResetKey} />}
+          {activeTab === TabType.SELF && <ChatInterface persona={persona} setPersona={setPersona} messages={messages} setMessages={setMessages} accessLevel={accessLevel} />}
           {activeTab === TabType.DASHBOARD && <DashboardView persona={persona} setPersona={setPersona} accessLevel={accessLevel} />}
         </div>
       </main>
