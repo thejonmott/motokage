@@ -4,7 +4,8 @@ import json
 import logging
 import base64
 import time
-from flask import Flask, request, jsonify, send_from_directory
+import io
+from flask import Flask, request, jsonify, send_from_directory, send_file
 from flask_cors import CORS
 import google.generativeai as genai
 from google.cloud import storage
@@ -108,6 +109,57 @@ def save_dna():
         logger.error(f"DNA_SAVE_FAIL: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/upload_artifact', methods=['POST'])
+def upload_artifact():
+    """Uploads a file to GCS artifacts/ folder and returns a proxy URL."""
+    if not storage_client:
+        return jsonify({'error': 'Storage subsystem unavailable.'}), 503
+    
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file part'}), 400
+    
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'error': 'No selected file'}), 400
+
+    try:
+        bucket = storage_client.bucket(DNA_BUCKET_NAME)
+        # Unique filename to prevent overwrites
+        filename = f"artifacts/{int(time.time())}_{file.filename}"
+        blob = bucket.blob(filename)
+        blob.upload_from_file(file, content_type=file.content_type)
+        
+        # We return a local proxy URL because the bucket is likely private
+        return jsonify({
+            'url': f'/api/artifact/{filename}',
+            'filename': filename,
+            'type': file.content_type
+        })
+    except Exception as e:
+        logger.error(f"UPLOAD_FAIL: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/artifact/<path:filename>', methods=['GET'])
+def get_artifact(filename):
+    """Proxy to stream GCS artifacts securely."""
+    if not storage_client:
+        return jsonify({'error': 'Storage subsystem unavailable.'}), 503
+    try:
+        bucket = storage_client.bucket(DNA_BUCKET_NAME)
+        blob = bucket.blob(filename)
+        if not blob.exists():
+            return jsonify({'error': 'Artifact not found'}), 404
+        
+        content = blob.download_as_bytes()
+        return send_file(
+            io.BytesIO(content),
+            mimetype=blob.content_type,
+            as_attachment=False,
+            download_name=filename.split('/')[-1]
+        )
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/api/chat', methods=['POST'])
 def chat():
     try:
@@ -146,6 +198,7 @@ def chat():
 
 @app.route('/api/analyze-resume', methods=['POST'])
 def analyze_resume():
+    """Analyzes a resume to extract OriginFact objects."""
     try:
         if not API_KEY: return jsonify({'error': 'Key Missing'}), 500
         data = request.json
@@ -153,10 +206,31 @@ def analyze_resume():
         file_data = data.get('file')
         parts = []
         if file_data:
+            # We assume small files for base64. For larger ones, we'd use GCS URI directly with Vertex AI
             parts.append({'mime_type': file_data['mimeType'], 'data': base64.b64decode(file_data['data'])})
         if text_content:
             parts.append(text_content)
-        prompt = "Analyze resume for DNA updates. Return JSON."
+            
+        prompt = """
+        Analyze this document/text to extract key timeline events, career milestones, and personal history. 
+        Deconstruct the content into a list of specific facts.
+        
+        Return ONLY a JSON array of objects matching this schema:
+        [
+            {
+                "year": "YYYY",
+                "month": "MonthName",
+                "day": "DD",
+                "date": "YYYY-MM-DD",
+                "event": "Short Title",
+                "significance": "Why this matters to the persona's history",
+                "details": "Full description",
+                "category": "CAREER" | "MILESTONE" | "PERSONAL",
+                "impact": 8
+            }
+        ]
+        """
+        
         model = genai.GenerativeModel('gemini-3-flash-preview')
         response = model.generate_content([prompt] + parts, generation_config={"response_mime_type": "application/json"})
         return jsonify(json.loads(response.text))
@@ -176,7 +250,7 @@ def synthesize():
             parts.append({'mime_type': file_data['mimeType'], 'data': base64.b64decode(file_data['data'])})
         if content:
             parts.append(content)
-        prompt = "Synthesize artifact for mosaic. Return JSON {title, summary}."
+        prompt = "Synthesize this artifact for the digital twin's memory mosaic. Summarize its core essence. Return JSON {title, summary}."
         model = genai.GenerativeModel('gemini-3-flash-preview')
         response = model.generate_content([prompt] + parts, generation_config={"response_mime_type": "application/json"})
         return jsonify(json.loads(response.text))

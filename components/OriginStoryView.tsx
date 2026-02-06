@@ -62,9 +62,49 @@ const OriginStoryView: React.FC<OriginStoryViewProps> = ({ persona, setPersona, 
     setIsAddingFact(true);
   };
 
-  // --- RELATIONSHIP LOGIC ---
+  // --- RELATIONSHIP LOGIC WITH TIMELINE HOOKS ---
   const handleSaveRelation = () => {
     if (!newRelation.name) return;
+    
+    let updatedFacts = [...persona.originFacts];
+    
+    // Auto-Generate Timeline Events if they don't exist yet (Basic heuristic)
+    // 1. Birth Event
+    if (newRelation.birthDate && !editingRelationId) {
+      const parts = newRelation.birthDate.split('/'); // Assumes MM/DD/YYYY
+      if (parts.length === 3) {
+        updatedFacts.push({
+          id: `o_birth_${Date.now()}`,
+          year: parts[2],
+          month: parts[0], // Simplified
+          day: parts[1],
+          date: newRelation.birthDate,
+          event: `Birth of ${newRelation.name}`,
+          category: 'PERSONAL',
+          significance: `Arrival of ${newRelation.type.toLowerCase()} in the family constellation.`,
+          impact: 8
+        });
+      }
+    }
+    
+    // 2. Marriage Event
+    if (newRelation.marriageDate && !editingRelationId) {
+       const parts = newRelation.marriageDate.split('/');
+       if (parts.length === 3) {
+        updatedFacts.push({
+          id: `o_marriage_${Date.now()}`,
+          year: parts[2],
+          month: parts[0],
+          day: parts[1],
+          date: newRelation.marriageDate,
+          event: `Union with ${newRelation.name}`,
+          category: 'RELATIONAL',
+          significance: `Formal union and establishment of partnership.`,
+          impact: 10
+        });
+       }
+    }
+
     if (editingRelationId) {
       setPersona(prev => ({
         ...prev,
@@ -72,7 +112,11 @@ const OriginStoryView: React.FC<OriginStoryViewProps> = ({ persona, setPersona, 
       }));
     } else {
       const rel: Relationship = { id: `r_${Date.now()}`, ...newRelation } as Relationship;
-      setPersona(prev => ({ ...prev, relationships: [...prev.relationships, rel] }));
+      setPersona(prev => ({ 
+        ...prev, 
+        relationships: [...prev.relationships, rel],
+        originFacts: updatedFacts.sort((a, b) => (parseInt(a.year) || 0) - (parseInt(b.year) || 0))
+      }));
     }
     setIsAddingRelation(false);
     setEditingRelationId(null);
