@@ -13,7 +13,7 @@ const DocumentationView: React.FC = () => {
             </h1>
             <div className="flex flex-col gap-3">
               <p className="text-[10px] font-mono text-slate-500 uppercase tracking-[0.4em]">
-                Cognitive Legacy Specification • v16.0.0-CLOUD-NATIVE
+                Cognitive Legacy Specification • v16.1.0-CODEX-READY
               </p>
               <a 
                 href="https://github.com/thejonmott/motokage" 
@@ -190,56 +190,37 @@ const DocumentationView: React.FC = () => {
               ))}
             </div>
           </div>
-        </div>
-      </section>
 
-      {/* 04. Customization & Identity */}
-      <section className="space-y-12">
-        <h3 className="text-2xl font-bold font-heading text-white flex items-center gap-4">
-          <span className="text-slate-700 font-light">04.</span> Identity Hotspots & Customization
-        </h3>
-        <p className="text-lg text-slate-400 leading-relaxed font-light">
-          When forking this project, you must re-calibrate the identity hooks to reflect your own persona. Replace all references to **Motokage** with your chosen brand name.
-        </p>
-
-        <div className="grid md:grid-cols-2 gap-8">
-          <div className="p-10 bg-slate-900/50 border border-indigo-500/20 rounded-[3rem] space-y-6">
-            <h4 className="text-[10px] font-bold text-white uppercase tracking-[0.4em] border-b border-slate-800 pb-4">Variable Definitions</h4>
-            <div className="space-y-4">
-               <div className="space-y-1">
-                 <div className="text-[11px] font-bold text-indigo-400 font-mono">App.tsx → INITIAL_PERSONA</div>
-                 <p className="text-[10px] text-slate-500 leading-relaxed">Modify the name, profession, and bio. This is the seed for the initial local storage state.</p>
-               </div>
-               <div className="space-y-1">
-                 <div className="text-[11px] font-bold text-indigo-400 font-mono">Header.tsx → Brand Header</div>
-                 <p className="text-[10px] text-slate-500 leading-relaxed">Update the text strings for "MOTOKAGE" and replace the default Kanji `影` with your logo or identifier.</p>
-               </div>
-               <div className="space-y-1">
-                 <div className="text-[11px] font-bold text-indigo-400 font-mono">metadata.json → Manifest</div>
-                 <p className="text-[10px] text-slate-500 leading-relaxed">Update the meta name and description for browser tab persistence.</p>
-               </div>
-            </div>
-          </div>
-          <div className="p-10 bg-slate-900/50 border border-indigo-500/20 rounded-[3rem] space-y-6">
-            <h4 className="text-[10px] font-bold text-white uppercase tracking-[0.4em] border-b border-slate-800 pb-4">Cognitive Grounding</h4>
-            <div className="space-y-4">
-               <div className="space-y-1">
-                 <div className="text-[11px] font-bold text-indigo-400 font-mono">ChatInterface.tsx → instruction</div>
-                 <p className="text-[10px] text-slate-500 leading-relaxed">Update the `IDENTITY` and `DEPLOYMENT_VERSION` strings within the system message template.</p>
-               </div>
-               <div className="space-y-1">
-                 <div className="text-[11px] font-bold text-indigo-400 font-mono">types.ts → Persona Interface</div>
-                 <p className="text-[10px] text-slate-500 leading-relaxed">If you need to add specific DNA strands (e.g., "socialHandles"), extend the TypeScript interfaces here.</p>
-               </div>
+          {/* Phase V (New) */}
+          <div className="relative pl-12 border-l border-slate-800 space-y-8">
+            <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-slate-950 border-2 border-slate-700"></div>
+            <h4 className="text-lg font-bold text-white uppercase tracking-tight font-heading">Phase V: Multimodal Ingestion ("The Codex")</h4>
+            <div className="bg-slate-900/50 border border-slate-800 rounded-[3rem] p-10 space-y-8 shadow-2xl">
+              <div className="grid md:grid-cols-2 gap-8 items-center">
+                 <div className="space-y-4">
+                    <p className="text-[11px] text-slate-400 font-mono uppercase tracking-widest leading-relaxed">
+                      To move beyond simple "System Instructions", we implemented a dual-pipeline ingestion strategy within the Mosaic view.
+                    </p>
+                    <ul className="space-y-4 text-xs font-mono text-slate-500 uppercase tracking-widest">
+                       <li className="flex items-center gap-3"><span className="w-1.5 h-1.5 bg-indigo-500 rounded-full"></span> <span>Visual Grounding: Image Assets</span></li>
+                       <li className="flex items-center gap-3"><span className="w-1.5 h-1.5 bg-purple-500 rounded-full"></span> <span>The Codex: High-Density Text</span></li>
+                    </ul>
+                 </div>
+                 <div className="p-6 bg-slate-950 border border-slate-800 rounded-2xl">
+                    <p className="text-[9px] text-slate-400 font-light leading-relaxed italic">
+                      "We treat 350+ page chat logs not as text, but as **Recursive Meta-Data**. By ingesting the 'Origin Story of the Origin Story', the twin aligns its latent reasoning with the Creator's actual decision-making process."
+                    </p>
+                 </div>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* 05. Operational Logic */}
+      {/* 06. Operational Logic */}
       <section className="space-y-12 bg-slate-900/40 p-16 rounded-[4rem] border border-slate-800 shadow-2xl">
         <h3 className="text-2xl font-bold font-heading text-white flex items-center gap-4">
-          <span className="text-slate-700 font-light">05.</span> Operational Logic: Ambassador vs. Studio
+          <span className="text-slate-700 font-light">06.</span> Operational Logic: Ambassador vs. Studio
         </h3>
         <div className="grid md:grid-cols-2 gap-16">
           <div className="space-y-6 text-left">
@@ -263,10 +244,10 @@ const DocumentationView: React.FC = () => {
         </div>
       </section>
 
-      {/* 06. Maintenance Cycle */}
+      {/* 07. Maintenance Cycle */}
       <section className="space-y-10">
         <h3 className="text-2xl font-bold font-heading text-white flex items-center gap-4">
-          <span className="text-slate-700 font-light">06.</span> Deployment Maintenance Lifecycle
+          <span className="text-slate-700 font-light">07.</span> Deployment Maintenance Lifecycle
         </h3>
         <div className="grid md:grid-cols-3 gap-8">
            {[
