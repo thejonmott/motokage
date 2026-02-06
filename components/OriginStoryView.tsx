@@ -81,7 +81,7 @@ const OriginStoryView: React.FC<OriginStoryViewProps> = ({ persona, setPersona, 
           date: newRelation.birthDate,
           event: `Birth of ${newRelation.name}`,
           category: 'PERSONAL',
-          significance: `Arrival of ${newRelation.type.toLowerCase()} in the family constellation.`,
+          significance: `Arrival of ${(newRelation.type || 'person').toLowerCase()} in the family constellation.`,
           impact: 8
         });
       }
