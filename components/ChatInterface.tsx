@@ -159,8 +159,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
   };
 
   return (
-    <div className="flex flex-col lg:flex-row gap-8 max-w-7xl mx-auto h-[85vh] animate-in fade-in duration-700">
-      <div className="w-full lg:w-80 shrink-0 space-y-6 text-left">
+    <div className="flex flex-col lg:flex-row gap-8 max-w-7xl mx-auto h-[75vh] lg:h-[85vh] animate-in fade-in duration-700">
+      {/* Sidebar - Hidden on Mobile to prioritize chat view */}
+      <div className="hidden lg:block w-full lg:w-80 shrink-0 space-y-6 text-left">
         <div className={`relative group p-8 bg-slate-900 border rounded-[2.5rem] overflow-hidden shadow-2xl transition-all rotate-3 ${accessLevel === 'CORE' ? 'border-purple-500/50' : 'border-slate-800'}`}>
           {isLoading && (
             <div className="absolute inset-0 pointer-events-none overflow-hidden z-20">
@@ -184,8 +185,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
         </div>
       </div>
 
-      <div className={`flex-grow flex flex-col bg-slate-950 rounded-[3.5rem] border overflow-hidden shadow-2xl transition-all duration-500 ${accessLevel === 'CORE' ? 'border-purple-500/40 bg-slate-900/20' : 'border-indigo-500/20'}`}>
-        <div className="bg-slate-900/50 backdrop-blur-xl px-12 py-8 flex items-center justify-between border-b border-slate-800">
+      <div className={`flex-grow flex flex-col bg-slate-950 rounded-3xl lg:rounded-[3.5rem] border overflow-hidden shadow-2xl transition-all duration-500 ${accessLevel === 'CORE' ? 'border-purple-500/40 bg-slate-900/20' : 'border-indigo-500/20'}`}>
+        <div className="bg-slate-900/50 backdrop-blur-xl px-6 py-6 lg:px-12 lg:py-8 flex items-center justify-between border-b border-slate-800">
           <div className="flex items-center gap-6 text-left">
             <div className={`w-12 h-12 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center text-xl font-bold text-white transition-all ${accessLevel === 'CORE' ? 'text-purple-400 border-purple-500/30 rotate-3' : ''}`}>影</div>
             <div>
@@ -195,7 +196,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
           </div>
         </div>
 
-        <div className="flex-grow overflow-y-auto p-12 space-y-10 no-scrollbar scroll-smooth">
+        <div className="flex-grow overflow-y-auto p-6 lg:p-12 space-y-6 lg:space-y-10 no-scrollbar scroll-smooth">
           {messages.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-center space-y-10 py-10">
               <div className="space-y-4">
@@ -213,7 +214,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
           ) : (
             messages.map((msg, i) => (
               <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in slide-in-from-bottom-2`}>
-                <div className={`max-w-[85%] rounded-[2.5rem] px-10 py-8 text-[15px] border shadow-xl text-left ${msg.role === 'user' ? 'bg-indigo-600 border-indigo-500 text-white shadow-indigo-500/10' : 'bg-slate-900 border-slate-800 text-slate-200 shadow-slate-950/50'}`}>
+                <div className={`max-w-[95%] lg:max-w-[85%] rounded-[2rem] lg:rounded-[2.5rem] px-6 py-5 lg:px-10 lg:py-8 text-xs lg:text-[15px] border shadow-xl text-left ${msg.role === 'user' ? 'bg-indigo-600 border-indigo-500 text-white shadow-indigo-500/10' : 'bg-slate-900 border-slate-800 text-slate-200 shadow-slate-950/50'}`}>
                   {msg.role === 'model' ? renderFormattedText(msg.text) : msg.text}
                 </div>
               </div>
@@ -234,20 +235,20 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ persona, setPersona, mess
           <div ref={messagesEndRef} />
         </div>
 
-        <div className="p-10 bg-slate-950 border-t border-slate-900">
+        <div className="p-4 lg:p-10 bg-slate-950 border-t border-slate-900">
           <div className="flex gap-4 max-w-5xl mx-auto items-center">
             <input 
               value={input} 
               onChange={e => setInput(e.target.value)} 
               onKeyDown={handleKeyDown}
-              placeholder={accessLevel === 'CORE' ? "Calibrate the DNA..." : "Ask Motokage a strategic question..."} 
-              className={`flex-grow bg-slate-900 border border-slate-800 rounded-2xl px-8 py-5 text-sm text-white outline-none transition-all placeholder:text-slate-700 focus:border-indigo-500`} 
+              placeholder={accessLevel === 'CORE' ? "Calibrate the DNA..." : "Ask Motokage..."} 
+              className={`flex-grow bg-slate-900 border border-slate-800 rounded-2xl px-6 py-4 lg:px-8 lg:py-5 text-xs lg:text-sm text-white outline-none transition-all placeholder:text-slate-700 focus:border-indigo-500`} 
               disabled={isLoading} 
             />
             <button 
               onClick={() => handleSend()}
               disabled={isLoading || !input.trim()} 
-              className={`h-[60px] px-10 rounded-2xl font-bold text-[10px] uppercase tracking-widest transition-all shadow-2xl ${accessLevel === 'CORE' ? 'bg-purple-600 hover:bg-purple-700' : 'bg-indigo-600 hover:bg-indigo-700'} text-white disabled:opacity-20`}
+              className={`h-[50px] lg:h-[60px] px-6 lg:px-10 rounded-2xl font-bold text-[9px] lg:text-[10px] uppercase tracking-widest transition-all shadow-2xl ${accessLevel === 'CORE' ? 'bg-purple-600 hover:bg-purple-700' : 'bg-indigo-600 hover:bg-indigo-700'} text-white disabled:opacity-20`}
             >
               Send
             </button>
