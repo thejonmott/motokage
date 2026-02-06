@@ -5,6 +5,8 @@ import { Persona } from '../types';
 interface ShadowSyncConsoleProps {
   persona: Persona;
   setPersona: React.Dispatch<React.SetStateAction<Persona>>;
+  syncStatus?: 'idle' | 'detected' | 'failed' | 'saving' | 'saved';
+  onManualSave?: () => void;
 }
 
 const toBase64 = (str: string) => {
@@ -13,7 +15,7 @@ const toBase64 = (str: string) => {
   return btoa(binString);
 };
 
-const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona }) => {
+const ShadowSyncConsole: React.FC<ShadowSyncConsoleProps> = ({ persona, syncStatus, onManualSave }) => {
   const [repo, setRepo] = useState(localStorage.getItem('motokage_repo') || 'thejonmott/motokage');
   const [token, setToken] = useState(localStorage.getItem('motokage_token') || '');
   const [targetEnv, setTargetEnv] = useState<'staging' | 'main'>(localStorage.getItem('motokage_env') as any || 'staging');
@@ -169,7 +171,7 @@ options:
         setProgress(Math.round(((i + 1) / uniqueFiles.length) * 100));
       }
 
-      setCurrentFile('Commiting DNA sequence...');
+      setCurrentFile('Commiting System Upgrade...');
       const treeRes = await fetch(`https://api.github.com/repos/${repo}/git/trees`, {
         method: 'POST',
         headers,
@@ -181,7 +183,7 @@ options:
         method: 'POST',
         headers,
         body: JSON.stringify({ 
-          message: `🚀 [GOLD_DEPLOY] Motokage v15.9.2: Binding API_KEY Secret correctly`, 
+          message: `🚀 [SYSTEM_DEPLOY] Motokage Update: Codebase & Default DNA`, 
           tree: treeData.sha, 
           parents: [latestCommitSha] 
         })
@@ -194,84 +196,103 @@ options:
         body: JSON.stringify({ sha: commitData.sha })
       });
 
-      setStatus({ type: 'success', msg: `UPLINK SUCCESSFUL. RE-DEPLOYMENT TRIGGERED ON ${targetEnv.toUpperCase()}.` });
+      setStatus({ type: 'success', msg: `CODE DEPLOYMENT TRIGGERED ON ${targetEnv.toUpperCase()}. CHECK GOOGLE CLOUD BUILD.` });
     } catch (e: any) {
       setStatus({ type: 'error', msg: e.message });
     }
   };
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-[3rem] p-12 shadow-2xl space-y-10">
+    <div className="bg-slate-900 border border-slate-800 rounded-[3rem] p-12 shadow-2xl space-y-12">
+      
+      {/* HEADER */}
       <div className="flex justify-between items-center border-b border-slate-800 pb-8">
         <div className="space-y-1 text-left">
           <h3 className="text-sm font-bold text-white uppercase tracking-widest flex items-center gap-2">
             <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
-            Cloud DNA Uplink
+            Cloud Operations Console
           </h3>
-          <p className="text-[10px] text-slate-500 font-mono uppercase tracking-widest">Single Source of Truth</p>
+          <p className="text-[10px] text-slate-500 font-mono uppercase tracking-widest">Memory Persistence & Code Deployment</p>
         </div>
-        <div className="flex items-center gap-6">
+      </div>
+
+      {/* ZONE 1: MEMORY CORE (GCS) */}
+      <div className="p-10 bg-slate-950/50 border border-emerald-500/20 rounded-[2.5rem] relative overflow-hidden">
+        <div className="flex flex-col md:flex-row justify-between items-center gap-8">
+          <div className="space-y-4 text-left">
+            <div className="flex items-center gap-3">
+               <div className={`w-3 h-3 rounded-full ${syncStatus === 'saved' || syncStatus === 'detected' ? 'bg-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.5)]' : 'bg-amber-500 animate-pulse'}`}></div>
+               <h4 className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">Active Memory Core (GCS)</h4>
+            </div>
+            <p className="text-[10px] text-slate-400 font-mono leading-relaxed max-w-lg">
+              The "DNA" (Persona, Memories, Mandates) is stored in a private Google Cloud Storage bucket. 
+              Changes are auto-saved. Use this control to force a manual synchronization.
+            </p>
+          </div>
+          
+          <div className="flex items-center gap-6">
+             <div className="text-right">
+                <div className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Sync Status</div>
+                <div className="text-lg font-bold text-white uppercase tracking-tighter">{syncStatus === 'saved' ? 'NOMINAL' : syncStatus?.toUpperCase()}</div>
+             </div>
+             <button 
+               onClick={onManualSave} 
+               disabled={syncStatus === 'saving'}
+               className="h-14 px-8 bg-emerald-600/20 border border-emerald-500/50 text-emerald-400 rounded-2xl font-bold text-[9px] uppercase tracking-widest hover:bg-emerald-600 hover:text-white transition-all disabled:opacity-50"
+             >
+               {syncStatus === 'saving' ? 'Uplinking...' : 'Force Sync DNA'}
+             </button>
+          </div>
+        </div>
+      </div>
+
+      {/* ZONE 2: SYSTEM INFRASTRUCTURE (GITHUB) */}
+      <div className="space-y-8 pt-4">
+        <div className="flex justify-between items-end">
+          <div className="space-y-2 text-left">
+            <h4 className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest">System Infrastructure (GitHub)</h4>
+            <p className="text-[10px] text-slate-500 font-mono">Deploy code updates, architectural changes, or factory-reset defaults.</p>
+          </div>
           <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800">
              <button onClick={() => setTargetEnv('staging')} className={`px-4 py-1.5 rounded-lg text-[8px] font-bold uppercase transition-all ${targetEnv === 'staging' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30' : 'text-slate-600'}`}>Staging</button>
              <button onClick={() => setTargetEnv('main')} className={`px-4 py-1.5 rounded-lg text-[8px] font-bold uppercase transition-all ${targetEnv === 'main' ? 'bg-purple-500/10 text-purple-400 border border-purple-500/30' : 'text-slate-600'}`}>Production</button>
           </div>
         </div>
+
+        <div className="grid md:grid-cols-2 gap-8">
+          <div className="space-y-4 text-left">
+            <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">GitHub Repository</label>
+            <input type="text" value={repo} onChange={(e) => setRepo(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-6 py-4 text-xs text-white outline-none focus:border-indigo-500 transition-all font-mono" />
+          </div>
+          <div className="space-y-4 text-left">
+            <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Auth Token</label>
+            <input type="password" value={token} onChange={(e) => setToken(e.target.value)} placeholder="Locked" className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-6 py-4 text-xs text-white outline-none focus:border-indigo-500 transition-all font-mono" />
+          </div>
+        </div>
+
+        {/* Progress Bar for GitHub Ops */}
+        {(status.type === 'loading' || progress > 0) && (
+          <div className="p-6 bg-slate-950 border border-indigo-500/30 rounded-2xl space-y-3">
+             <div className="flex justify-between items-end text-[8px] font-mono text-slate-400 uppercase tracking-widest">
+               <span className="truncate max-w-[300px]">{currentFile || 'Initializing...'}</span>
+               <span>{progress}%</span>
+             </div>
+             <div className="w-full h-1.5 bg-slate-900 rounded-full overflow-hidden">
+               <div className="h-full bg-indigo-500 transition-all duration-300" style={{ width: `${progress}%` }}></div>
+             </div>
+          </div>
+        )}
+
+        <button onClick={handleAtomicSync} disabled={status.type === 'loading'} className={`w-full py-6 rounded-[2rem] font-bold text-[10px] uppercase tracking-[0.4em] transition-all shadow-xl border group ${targetEnv === 'main' ? 'bg-purple-600 hover:bg-purple-700 border-purple-500/50 text-white' : 'bg-amber-600 hover:bg-amber-700 border-amber-500/50 text-white'}`}>
+          {status.type === 'loading' ? 'DEPLOYING SYSTEM UPDATES...' : `DEPLOY SYSTEM UPDATE TO ${targetEnv.toUpperCase()}`}
+        </button>
+
+        {status.msg && (
+          <div className={`p-6 rounded-2xl text-[9px] font-mono text-center uppercase tracking-widest border animate-in fade-in slide-in-from-top-2 ${status.type === 'error' ? 'bg-orange-500/10 border-orange-500/20 text-orange-400' : 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400'}`}>
+            {status.msg}
+          </div>
+        )}
       </div>
-
-      <div className="grid md:grid-cols-2 gap-8">
-        <div className="p-8 bg-slate-950 border border-emerald-500/30 rounded-3xl space-y-4 text-left">
-           <h4 className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest flex items-center gap-2">
-             <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
-             Active Persistence: GCS
-           </h4>
-           <p className="text-[9px] text-slate-500 font-mono leading-relaxed">
-             Your "Digital Twin" state is now <strong>automatically saved</strong> to Google Cloud Storage. 
-             <br/><br/>
-             Use the console below to <strong>Commit</strong> this active state to GitHub for version history and redeployment resilience.
-           </p>
-        </div>
-        <div className="p-8 bg-slate-950 border border-indigo-500/30 rounded-3xl space-y-4 text-left">
-           <h4 className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest">Sync Telemetry</h4>
-           <div className="space-y-3">
-              <div className="flex justify-between items-end text-[8px] font-mono text-slate-400 uppercase tracking-widest">
-                <span className="truncate max-w-[200px]">{currentFile || 'Awaiting Ignition'}</span>
-                <span>{progress}%</span>
-              </div>
-              <div className="w-full h-2 bg-slate-900 rounded-full overflow-hidden border border-slate-800">
-                <div 
-                  className="h-full bg-gradient-to-r from-indigo-500 to-emerald-500 transition-all duration-300 relative" 
-                  style={{ width: `${progress}%` }}
-                >
-                  <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
-                </div>
-              </div>
-           </div>
-        </div>
-      </div>
-
-      <div className="grid md:grid-cols-2 gap-8">
-        <div className="space-y-4 text-left">
-          <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">GitHub Repository</label>
-          <input type="text" value={repo} onChange={(e) => setRepo(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-6 py-4 text-xs text-white outline-none focus:border-emerald-500 transition-all font-mono" />
-        </div>
-        <div className="space-y-4 text-left">
-          <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Auth Token</label>
-          <input type="password" value={token} onChange={(e) => setToken(e.target.value)} placeholder="Locked" className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-6 py-4 text-xs text-white outline-none focus:border-emerald-500 transition-all font-mono" />
-        </div>
-      </div>
-
-      <button onClick={handleAtomicSync} disabled={status.type === 'loading'} className={`w-full py-7 rounded-[2rem] font-bold text-[12px] uppercase tracking-[0.5em] transition-all shadow-2xl border group ${targetEnv === 'main' ? 'bg-purple-600 hover:bg-purple-700 border-purple-500/50' : 'bg-emerald-600 hover:bg-emerald-700 border-emerald-500/50'}`}>
-        {status.type === 'loading' ? 'TRANSMITTING IDENTITY...' : `COMMIT DNA TO ${targetEnv.toUpperCase()}`}
-      </button>
-
-      {status.msg && (
-        <div className={`p-8 rounded-[2rem] text-[10px] font-mono text-center uppercase tracking-widest border animate-in fade-in slide-in-from-top-4 ${status.type === 'error' ? 'bg-orange-500/10 border-orange-500/20 text-orange-400' : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'}`}>
-          {status.msg}
-          {status.type === 'success' && (
-            <p className="mt-4 text-slate-500 normal-case italic">Uplink confirmed. Cloud Run is now resolving the secure API_KEY bound to this service.</p>
-          )}
-        </div>
-      )}
     </div>
   );
 };

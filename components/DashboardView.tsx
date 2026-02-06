@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Persona, AccessLevel } from '../types';
 import ShadowSyncConsole from './ShadowSyncConsole';
@@ -6,6 +7,8 @@ interface DashboardViewProps {
   persona: Persona;
   setPersona: React.Dispatch<React.SetStateAction<Persona>>;
   accessLevel: AccessLevel;
+  syncStatus?: 'idle' | 'detected' | 'failed' | 'saving' | 'saved';
+  onManualSave?: () => void;
 }
 
 const Icons = {
@@ -32,16 +35,53 @@ const Icons = {
   )
 };
 
-const DashboardView: React.FC<DashboardViewProps> = ({ persona, setPersona, accessLevel }) => {
+const DashboardView: React.FC<DashboardViewProps> = ({ persona, setPersona, accessLevel, syncStatus, onManualSave }) => {
   const [activeSubTab, setActiveSubTab] = useState<'sync' | 'artifacts' | 'integrations' | 'security'>('sync');
+  
+  // Artifact Upload State
+  const [isUploadModalOpen, setUploadModalOpen] = useState(false);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadType, setUploadType] = useState<'IMAGE' | 'DOCUMENT'>('IMAGE');
+  const [isUploading, setIsUploading] = useState(false);
 
-  const artifacts = [
+  const [artifacts, setArtifacts] = useState([
     { url: 'https://bpyiwpawyohlwdqdihem.supabase.co/storage/v1/object/public/product-images/1769905352053-g95ym5y4wq8.jpg', name: 'Primary Portrait', type: 'image' },
     { url: 'https://bpyiwpawyohlwdqdihem.supabase.co/storage/v1/object/public/product-images/1769905335142-godvnmby15m.jpg', name: 'Secondary Context', type: 'image' },
     { url: 'https://bpyiwpawyohlwdqdihem.supabase.co/storage/v1/object/public/product-images/1769905295809-bp72b1wp7mb.jpg', name: 'Environmental Asset 1', type: 'image' },
     { url: 'https://bpyiwpawyohlwdqdihem.supabase.co/storage/v1/object/public/product-images/1769905284655-79f1snpcbn.jpg', name: 'Environmental Asset 2', type: 'image' },
     { url: 'https://bpyiwpawyohlwdqdihem.supabase.co/storage/v1/object/public/product-images/1769905272265-tea3flf9rrn.jpg', name: 'Identity Detail', type: 'image' },
-  ];
+  ]);
+
+  const handleUpload = async () => {
+    if (!uploadFile) return;
+    setIsUploading(true);
+    
+    try {
+      const formData = new FormData();
+      formData.append('file', uploadFile);
+      
+      const res = await fetch('/api/upload_artifact', {
+        method: 'POST',
+        body: formData
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        // Add to local gallery state
+        setArtifacts(prev => [{
+            url: data.url,
+            name: uploadFile.name,
+            type: uploadType === 'IMAGE' ? 'image' : 'document'
+        }, ...prev]);
+        setUploadModalOpen(false);
+        setUploadFile(null);
+      }
+    } catch (e) {
+      console.error("Upload failed", e);
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   if (accessLevel !== 'CORE') {
     return (
@@ -58,7 +98,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({ persona, setPersona, acce
   }
 
   return (
-    <div className="space-y-12 animate-in fade-in duration-700">
+    <div className="space-y-12 animate-in fade-in duration-700 relative">
       <section className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 border-b border-slate-900 pb-10">
         <div className="space-y-2">
           <div className="text-purple-400 text-[10px] font-mono font-bold uppercase tracking-[0.4em]">Identity Management</div>
@@ -67,7 +107,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({ persona, setPersona, acce
         
         <nav className="flex gap-2 bg-slate-900/50 p-1.5 rounded-2xl border border-slate-800">
           {[
-            { id: 'sync', label: 'DNA Sync', icon: <Icons.Sync /> },
+            { id: 'sync', label: 'Cloud Sync', icon: <Icons.Sync /> },
             { id: 'artifacts', label: 'Artifacts', icon: <Icons.Artifacts /> },
             { id: 'integrations', label: 'Nexus Control', icon: <Icons.Integrations /> },
             { id: 'security', label: 'Security', icon: <Icons.Security /> }
@@ -88,7 +128,12 @@ const DashboardView: React.FC<DashboardViewProps> = ({ persona, setPersona, acce
       <div className="grid grid-cols-1 gap-12">
         {activeSubTab === 'sync' && (
           <div className="animate-in slide-in-from-bottom-4 duration-500">
-            <ShadowSyncConsole persona={persona} setPersona={setPersona} />
+            <ShadowSyncConsole 
+              persona={persona} 
+              setPersona={setPersona} 
+              syncStatus={syncStatus}
+              onManualSave={onManualSave}
+            />
           </div>
         )}
 
@@ -96,16 +141,31 @@ const DashboardView: React.FC<DashboardViewProps> = ({ persona, setPersona, acce
           <div className="animate-in slide-in-from-bottom-4 duration-500 space-y-10">
             <div className="flex justify-between items-center">
               <h3 className="text-sm font-bold text-white uppercase tracking-[0.3em]">Asset Repository</h3>
-              <button className="px-6 py-3 bg-slate-900 border border-slate-800 rounded-xl text-[9px] font-bold text-slate-400 uppercase tracking-widest hover:border-purple-500/30 transition-all">Upload New Artifact</button>
+              <button 
+                onClick={() => setUploadModalOpen(true)}
+                className="px-6 py-3 bg-slate-900 border border-slate-800 rounded-xl text-[9px] font-bold text-slate-400 uppercase tracking-widest hover:border-purple-500/30 hover:text-white transition-all"
+              >
+                Upload New Artifact
+              </button>
             </div>
+            
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
               {artifacts.map((art, i) => (
                 <div key={i} className="group relative aspect-square bg-slate-950 border border-slate-900 rounded-[2rem] overflow-hidden hover:border-purple-500/50 transition-all shadow-xl">
-                  <img src={art.url} alt={art.name} className="w-full h-full object-cover opacity-40 group-hover:opacity-100 transition-all duration-700 grayscale group-hover:grayscale-0" />
+                  {art.type === 'image' ? (
+                    <img src={art.url} alt={art.name} className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-all duration-700 grayscale group-hover:grayscale-0" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-slate-900 text-slate-700">
+                       <div className="text-center space-y-2">
+                         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mx-auto"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                         <div className="text-[8px] font-bold uppercase tracking-widest">DOC</div>
+                       </div>
+                    </div>
+                  )}
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent opacity-80"></div>
                   <div className="absolute bottom-4 left-4 right-4">
                     <p className="text-[9px] font-bold text-white uppercase truncate tracking-wider">{art.name}</p>
-                    <p className="text-[7px] font-mono text-purple-400 uppercase mt-1 tracking-widest">S3_STORAGE: PUBLIC</p>
+                    <p className="text-[7px] font-mono text-purple-400 uppercase mt-1 tracking-widest">{art.type === 'image' ? 'IMG_ASSET' : 'DOC_ASSET'}</p>
                   </div>
                 </div>
               ))}
@@ -187,6 +247,41 @@ const DashboardView: React.FC<DashboardViewProps> = ({ persona, setPersona, acce
           </div>
         )}
       </div>
+
+      {/* Upload Modal */}
+      {isUploadModalOpen && (
+        <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-xl z-[200] flex items-center justify-center p-6 animate-in fade-in">
+          <div className="bg-slate-900 border border-slate-800 p-12 rounded-[3.5rem] w-full max-w-xl shadow-2xl space-y-8 text-left">
+             <div className="space-y-2">
+                <h3 className="text-2xl font-bold text-white uppercase tracking-tight font-heading">Deploy Asset</h3>
+                <p className="text-[10px] text-slate-500 font-mono uppercase tracking-widest">Upload to Persistent Storage</p>
+             </div>
+             
+             <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800 w-fit">
+                <button onClick={() => setUploadType('IMAGE')} className={`px-6 py-2 rounded-lg text-[9px] font-bold uppercase tracking-widest transition-all ${uploadType === 'IMAGE' ? 'bg-purple-600 text-white shadow-lg' : 'text-slate-500'}`}>Image</button>
+                <button onClick={() => setUploadType('DOCUMENT')} className={`px-6 py-2 rounded-lg text-[9px] font-bold uppercase tracking-widest transition-all ${uploadType === 'DOCUMENT' ? 'bg-purple-600 text-white shadow-lg' : 'text-slate-500'}`}>Document</button>
+             </div>
+
+             <div className="border-2 border-dashed border-slate-800 rounded-2xl p-8 flex flex-col items-center justify-center gap-4 hover:border-purple-500/50 transition-all bg-slate-950/50 relative group">
+                <input type="file" onChange={(e) => setUploadFile(e.target.files?.[0] || null)} className="absolute inset-0 opacity-0 cursor-pointer" />
+                <div className={`w-12 h-12 rounded-full flex items-center justify-center ${uploadFile ? 'bg-purple-500 text-white' : 'bg-slate-900 text-slate-600'}`}>
+                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                </div>
+                <div className="text-center">
+                   <p className="text-[10px] font-bold text-white uppercase tracking-widest">{uploadFile ? uploadFile.name : 'Select File'}</p>
+                   <p className="text-[8px] text-slate-500 font-mono mt-1">GCS Bucket Target: /artifacts</p>
+                </div>
+             </div>
+
+             <div className="flex gap-4">
+               <button onClick={handleUpload} disabled={!uploadFile || isUploading} className="flex-grow bg-purple-600 text-white py-5 rounded-2xl font-bold text-[10px] uppercase tracking-widest shadow-xl disabled:opacity-50">
+                  {isUploading ? 'Uploading...' : 'Confirm Upload'}
+               </button>
+               <button onClick={() => { setUploadModalOpen(false); setUploadFile(null); }} className="px-10 py-5 bg-slate-950 text-slate-500 rounded-2xl text-[10px] font-bold uppercase tracking-widest">Cancel</button>
+             </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

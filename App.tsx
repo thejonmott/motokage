@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
+
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { TabType, Persona, Message, AccessLevel, OriginFact } from './types';
 import Header from './components/Header';
 import DNAView from './components/DNAView';
@@ -83,41 +84,50 @@ const App: React.FC = () => {
       });
   }, []);
 
+  // Defined as useCallback so it can be passed down to Dashboard for manual triggering
+  const saveToCloud = useCallback(async (currentPersona: Persona) => {
+    setCloudSyncStatus('saving');
+    try {
+      const response = await fetch('/api/save_dna', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(currentPersona)
+      });
+      
+      if (response.ok) {
+         setCloudSyncStatus('saved');
+         console.log("[Motokage System]: DNA Persisted to GCS.");
+      } else {
+         setCloudSyncStatus('failed');
+         console.error("[Motokage System]: Save Failed.");
+      }
+    } catch (e) {
+      console.error("Save Error", e);
+      setCloudSyncStatus('failed');
+    }
+  }, []);
+
   // 2. Auto-Save to GCS (Debounced)
   useEffect(() => {
     // Only auto-save if we are already synced/saved (avoid overwriting cloud with factory default on first load)
-    // OR if user is in CORE mode (implies they are editing)
     if (cloudSyncStatus === 'idle') return; 
 
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
 
-    setCloudSyncStatus('saving');
+    // Visual indicator that a change is pending
+    if (cloudSyncStatus !== 'saving') {
+       // We don't set 'saving' immediately to avoid flickering, 
+       // but we could set a 'pending' state if we wanted finer granularity.
+    }
     
-    saveTimeoutRef.current = setTimeout(async () => {
-      try {
-        const response = await fetch('/api/save_dna', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(persona)
-        });
-        
-        if (response.ok) {
-           setCloudSyncStatus('saved');
-           console.log("[Motokage System]: DNA Persisted to GCS.");
-        } else {
-           setCloudSyncStatus('failed');
-           console.error("[Motokage System]: Save Failed.");
-        }
-      } catch (e) {
-        console.error("Save Error", e);
-        setCloudSyncStatus('failed');
-      }
+    saveTimeoutRef.current = setTimeout(() => {
+      saveToCloud(persona);
     }, 2000); // 2 second debounce
 
     return () => {
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     };
-  }, [persona]);
+  }, [persona, saveToCloud]); // Removed cloudSyncStatus from dependency to avoid loops
 
   const handleLevelChange = (newLevel: AccessLevel) => {
     if (newLevel === 'AMBASSADOR') setActiveTab(TabType.STRATEGY);
@@ -148,7 +158,15 @@ const App: React.FC = () => {
           {activeTab === TabType.DNA && <DNAView persona={persona} setPersona={setPersona} accessLevel={accessLevel} />}
           {activeTab === TabType.MANDATES && <MandatesView persona={persona} setPersona={setPersona} accessLevel={accessLevel} />}
           {activeTab === TabType.SELF && <ChatInterface persona={persona} setPersona={setPersona} messages={messages} setMessages={setMessages} accessLevel={accessLevel} />}
-          {activeTab === TabType.DASHBOARD && <DashboardView persona={persona} setPersona={setPersona} accessLevel={accessLevel} />}
+          {activeTab === TabType.DASHBOARD && (
+            <DashboardView 
+              persona={persona} 
+              setPersona={setPersona} 
+              accessLevel={accessLevel}
+              syncStatus={cloudSyncStatus}
+              onManualSave={() => saveToCloud(persona)}
+            />
+          )}
         </div>
       </main>
 
