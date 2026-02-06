@@ -63,6 +63,9 @@ The "Gold Standard" requires that your API key is never stored in code.
 *   **`metadata.json`**: Update the app name and description to your specific project title.
 *   **`components/ChatInterface.tsx`**: Adjust the `systemInstruction` template to use your twin's name and preferred deployment version.
 
+**NEW: The Codex Strategy:**
+Don't just write a bio. Upload large "Reasoning Logs" (PDF/Text) via the Mosaic view. The system treats these documents as **Recursive Meta-Data**—ingesting not just your resume, but the back-and-forth history of *how* you think, enabling the twin to mimic your cognitive patterns.
+
 ### 5. Deploying the Matrix
 This project uses an atomic deployment strategy via `cloudbuild.yaml`.
 
@@ -83,8 +86,15 @@ The Python backend (`server.py`) is the critical security boundary. It ensures:
 
 ## ⚖️ Operational Modes
 The architecture supports two distinct operational states:
-- **Ambassador Mode (Public)**: A hardened, read-only interface for visitors to see how you think.
-- **Studio Mode (Private)**: An interrogation room for the owner. Modifications made here are **auto-synced to Google Cloud Storage** in real-time.
+
+1.  **Ambassador Mode (Public)**: 
+    *   A hardened, read-only interface.
+    *   Designed for the public to "chat" with your reflection.
+    *   Resists prompt manipulation.
+
+2.  **Studio Mode (Private)**: 
+    *   **Memory Sync (GCS)**: Changes to memories, artifacts, and mandates are auto-saved to Google Cloud Storage. This is the "Mind" of the twin.
+    *   **System Deploy (GitHub)**: Updates to the codebase (React/Python) are triggered manually via the dashboard. This is the "Body" of the twin.
 
 ---
 
