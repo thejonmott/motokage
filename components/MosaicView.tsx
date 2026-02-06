@@ -1,33 +1,28 @@
 
 import React, { useState, useRef } from 'react';
-import { Persona, AccessLevel, MemoryShard } from '../types';
+import { Persona, AccessLevel, MemoryShard, OriginFact } from '../types';
 
 interface MosaicViewProps {
   persona: Persona;
-  setPersona: (p: Persona) => void;
+  setPersona: React.Dispatch<React.SetStateAction<Persona>>;
   accessLevel: AccessLevel;
 }
 
 const MosaicView: React.FC<MosaicViewProps> = ({ persona, setPersona, accessLevel }) => {
   const [isAdding, setIsAdding] = useState(false);
   const [newShard, setNewShard] = useState({ title: '', content: '' });
-  const [artifactFile, setArtifactFile] = useState<{ data: string; mimeType: string } | null>(null);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [processingShardId, setProcessingShardId] = useState<string | null>(null);
   
   const [isRecordingEcho, setIsRecordingEcho] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64 = (reader.result as string).split(',')[1];
-        setArtifactFile({ data: base64, mimeType: file.type });
-        setNewShard(prev => ({ ...prev, title: `Ingested Doc: ${file.name}` }));
-      };
-      reader.readAsDataURL(file);
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files?.[0]) {
+      setUploadFile(e.target.files[0]);
+      setNewShard(prev => ({ ...prev, title: e.target.files![0].name }));
     }
   };
 
@@ -69,42 +64,120 @@ const MosaicView: React.FC<MosaicViewProps> = ({ persona, setPersona, accessLeve
       sensitivity: 'PUBLIC',
       audioData: base64Audio
     };
-    setPersona({ ...persona, memoryShards: [shard, ...persona.memoryShards] });
+    setPersona(prev => ({ ...prev, memoryShards: [shard, ...prev.memoryShards] }));
   };
 
-  const addShard = async () => {
-    if (!newShard.title && !artifactFile) return;
+  const uploadAndIngest = async () => {
+    if (!newShard.title && !uploadFile && !newShard.content) return;
     setIsProcessing(true);
+    
     try {
-      const response = await fetch('/api/synthesize', {
+      let attachmentUrl = undefined;
+      let attachmentType = undefined;
+      let fileDataForSynth = null;
+
+      // 1. Upload to GCS if file exists
+      if (uploadFile) {
+        const formData = new FormData();
+        formData.append('file', uploadFile);
+        
+        const uploadRes = await fetch('/api/upload_artifact', {
+          method: 'POST',
+          body: formData
+        });
+        
+        if (uploadRes.ok) {
+           const data = await uploadRes.json();
+           attachmentUrl = data.url;
+           attachmentType = data.type;
+           
+           // Read file for synthesis as base64
+           const buffer = await uploadFile.arrayBuffer();
+           const base64 = btoa(new Uint8Array(buffer).reduce((data, byte) => data + String.fromCharCode(byte), ''));
+           fileDataForSynth = { mimeType: uploadFile.type, data: base64 };
+        }
+      }
+
+      // 2. Synthesize/Summary
+      const synthResponse = await fetch('/api/synthesize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           content: newShard.content,
-          file: artifactFile
+          file: fileDataForSynth
         })
       });
-
-      if (!response.ok) throw new Error("Synthesis failed");
-      const data = await response.json();
+      
+      const synthData = await synthResponse.json();
 
       const shard: MemoryShard = {
         id: `s_${Date.now()}`,
         category: 'axiom',
-        title: data.title || newShard.title || 'Unnamed Artifact',
-        content: data.summary || newShard.content || 'No content extracted.',
+        title: synthData.title || newShard.title || 'Unnamed Artifact',
+        content: synthData.summary || newShard.content || 'No extracted content.',
         active: true,
-        sensitivity: 'PUBLIC'
+        sensitivity: 'PUBLIC',
+        attachmentUrl,
+        attachmentType
       };
       
-      setPersona({ ...persona, memoryShards: [shard, ...persona.memoryShards] });
+      setPersona(prev => ({ ...prev, memoryShards: [shard, ...prev.memoryShards] }));
       setIsAdding(false);
       setNewShard({ title: '', content: '' });
-      setArtifactFile(null);
+      setUploadFile(null);
     } catch (err) {
-      console.error("Artifact ingestion fail:", err);
+      console.error("Ingestion fail:", err);
+      alert("Failed to ingest artifact.");
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  const deconstructToTimeline = async (shard: MemoryShard) => {
+    if (!shard.attachmentUrl) return;
+    setProcessingShardId(shard.id);
+    
+    try {
+      // We need to fetch the file content to send to Gemini for analysis
+      // Since it's on our proxy, we can fetch it.
+      const res = await fetch(shard.attachmentUrl);
+      const blob = await res.blob();
+      const reader = new FileReader();
+      
+      reader.onloadend = async () => {
+        const base64 = (reader.result as string).split(',')[1];
+        
+        const analyzeRes = await fetch('/api/analyze-resume', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+             file: { mimeType: blob.type, data: base64 }
+          })
+        });
+        
+        const newFacts: OriginFact[] = await analyzeRes.json();
+        
+        if (Array.isArray(newFacts)) {
+           // Assign IDs and merge
+           const processedFacts = newFacts.map(f => ({
+             ...f,
+             id: `auto_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`
+           }));
+           
+           setPersona(prev => ({
+             ...prev,
+             originFacts: [...prev.originFacts, ...processedFacts].sort((a, b) => (parseInt(a.year) || 0) - (parseInt(b.year) || 0))
+           }));
+           alert(`Successfully extracted ${newFacts.length} timeline events.`);
+        }
+      };
+      reader.readAsDataURL(blob);
+      
+    } catch (err) {
+      console.error("Deconstruction failed", err);
+      alert("Failed to analyze document.");
+    } finally {
+      setProcessingShardId(null);
     }
   };
 
@@ -143,30 +216,31 @@ const MosaicView: React.FC<MosaicViewProps> = ({ persona, setPersona, accessLeve
                   <input type="text" placeholder="Artifact Title" value={newShard.title} onChange={e => setNewShard({...newShard, title: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-6 py-4 text-sm text-white outline-none focus:border-indigo-500" />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Plain Text Content</label>
-                  <textarea value={newShard.content} onChange={e => { setNewShard({...newShard, content: e.target.value}); if(artifactFile) setArtifactFile(null); }} placeholder="Paste evidence artifacts..." className="w-full h-48 bg-slate-950 border border-slate-800 rounded-2xl p-8 text-xs font-mono text-indigo-300 outline-none resize-none no-scrollbar" />
+                  <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Plain Text Context (Optional)</label>
+                  <textarea value={newShard.content} onChange={e => setNewShard({...newShard, content: e.target.value})} placeholder="Add context to this artifact..." className="w-full h-48 bg-slate-950 border border-slate-800 rounded-2xl p-8 text-xs font-mono text-indigo-300 outline-none resize-none no-scrollbar" />
                 </div>
               </div>
               <div className="space-y-6 flex flex-col">
-                <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Document Upload (PDF)</label>
+                <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Native File Upload</label>
                 <div className="flex-grow flex flex-col items-center justify-center border-2 border-dashed border-slate-800 rounded-2xl hover:border-indigo-500/50 transition-all p-10 relative group bg-slate-950/30">
-                  <input type="file" accept="application/pdf" onChange={handleFileChange} className="absolute inset-0 opacity-0 cursor-pointer" />
+                  <input type="file" onChange={handleFileSelect} className="absolute inset-0 opacity-0 cursor-pointer" />
                   <div className="text-center space-y-4 pointer-events-none">
-                    <div className={`w-16 h-16 rounded-2xl mx-auto flex items-center justify-center transition-all ${artifactFile ? 'bg-indigo-600 text-white' : 'bg-slate-900 text-slate-600'}`}>
+                    <div className={`w-16 h-16 rounded-2xl mx-auto flex items-center justify-center transition-all ${uploadFile ? 'bg-indigo-600 text-white' : 'bg-slate-900 text-slate-600'}`}>
                       <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                     </div>
                     <div>
-                      <p className="text-[10px] font-bold text-white uppercase tracking-widest">{artifactFile ? 'PDF Ready for Synthesis' : 'Upload Shard PDF'}</p>
+                      <p className="text-[10px] font-bold text-white uppercase tracking-widest">{uploadFile ? uploadFile.name : 'Select PDF / Image / Text'}</p>
+                      <p className="text-[8px] text-slate-500 font-mono mt-2">Will be stored in GCS: artifacts/</p>
                     </div>
                   </div>
                 </div>
               </div>
            </div>
            <div className="flex gap-4">
-             <button onClick={addShard} disabled={isProcessing || (!newShard.title && !artifactFile)} className="flex-grow bg-indigo-600 text-white py-5 rounded-2xl font-bold text-[10px] uppercase tracking-widest hover:bg-indigo-500 transition-all disabled:opacity-50">
-               {isProcessing ? 'Synthesizing...' : 'Confirm Ingestion'}
+             <button onClick={uploadAndIngest} disabled={isProcessing || (!newShard.title && !uploadFile && !newShard.content)} className="flex-grow bg-indigo-600 text-white py-5 rounded-2xl font-bold text-[10px] uppercase tracking-widest hover:bg-indigo-500 transition-all disabled:opacity-50">
+               {isProcessing ? 'Persisting to Cloud...' : 'Confirm Ingestion'}
              </button>
-             <button onClick={() => { setIsAdding(false); setArtifactFile(null); }} className="px-10 py-5 bg-slate-950 text-slate-500 rounded-2xl text-[10px] font-bold uppercase tracking-widest">Cancel</button>
+             <button onClick={() => { setIsAdding(false); setUploadFile(null); }} className="px-10 py-5 bg-slate-950 text-slate-500 rounded-2xl text-[10px] font-bold uppercase tracking-widest">Cancel</button>
            </div>
         </div>
       )}
@@ -182,8 +256,32 @@ const MosaicView: React.FC<MosaicViewProps> = ({ persona, setPersona, accessLeve
                  </button>
                )}
             </div>
+            
             <h5 className="text-white text-sm font-bold mb-4 uppercase tracking-tight">{shard.title}</h5>
-            <p className="text-[11px] text-slate-500 leading-relaxed font-mono uppercase tracking-wider line-clamp-6">{shard.content}</p>
+            
+            <p className="text-[11px] text-slate-500 leading-relaxed font-mono uppercase tracking-wider line-clamp-4 mb-6">{shard.content}</p>
+
+            <div className="mt-auto space-y-4">
+               {shard.attachmentUrl && (
+                 <div className="p-4 bg-slate-900/50 rounded-xl border border-slate-800 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-slate-500"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                       <span className="text-[9px] font-mono text-slate-400 uppercase tracking-widest">Attached</span>
+                    </div>
+                    <a href={shard.attachmentUrl} target="_blank" rel="noreferrer" className="text-[8px] font-bold text-indigo-400 uppercase tracking-widest hover:text-white">View</a>
+                 </div>
+               )}
+
+               {shard.attachmentUrl && accessLevel === 'CORE' && (
+                 <button 
+                   onClick={() => deconstructToTimeline(shard)} 
+                   disabled={processingShardId === shard.id}
+                   className="w-full py-3 border border-slate-800 rounded-xl text-[8px] font-bold text-slate-500 uppercase tracking-widest hover:bg-indigo-500/10 hover:text-indigo-400 transition-all"
+                 >
+                   {processingShardId === shard.id ? 'Analyzing...' : 'Deconstruct to Timeline'}
+                 </button>
+               )}
+            </div>
           </div>
         ))}
       </div>

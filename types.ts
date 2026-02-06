@@ -23,6 +23,8 @@ export interface MemoryShard {
   active: boolean;
   sensitivity: SensitivityLevel;
   audioData?: string; // Base64 raw audio
+  attachmentUrl?: string; // Secure Proxy URL to GCS
+  attachmentType?: string; // MIME type
 }
 
 export interface Agent {
